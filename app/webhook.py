@@ -131,12 +131,13 @@ async def send_test_alert(request: Request):
                 labels={
                     "alertname": "CrashLoopBackOff",
                     "namespace": "demo",
-                    "pod": "nginx-6557b59c94-bf4t8",
+                    "pod": "test-crashloop-" + uuid4().hex[:5],
                     "severity": "critical",
                 },
                 annotations={
-                    "summary": "Test alert — pod is crash looping",
-                    "description": "This is a test alert sent from the Klarsicht setup page.",
+                    "summary": "Pod is crash looping — missing DATABASE_URL environment variable",
+                    "description": "Container exited with code 1: DATABASE_URL environment variable is not set. "
+                    "Deploy examples/test-crashloop.yaml to reproduce this scenario.",
                 },
                 startsAt=datetime.now(timezone.utc),
                 fingerprint="test-" + uuid4().hex[:8],
@@ -144,7 +145,7 @@ async def send_test_alert(request: Request):
         ],
         groupLabels={"alertname": "CrashLoopBackOff"},
         commonLabels={"namespace": "demo", "severity": "critical"},
-        commonAnnotations={"summary": "Test alert — pod is crash looping"},
+        commonAnnotations={"summary": "Pod is crash looping — missing DATABASE_URL environment variable"},
     )
 
     incident_ids = []

@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Klarsicht — AI Root Cause Analysis for Kubernetes</title>
+  <meta name="description" content="Klarsicht is a self-hosted AI agent that turns Grafana alerts into root cause analyses with fix steps in seconds. Deploys via Helm into your existing monitoring stack.">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #000;
+      --text: #fff;
+      --text-secondary: #888;
+      --text-tertiary: #555;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.15);
+      --border: #1a1a1a;
+      --surface: #0a0a0a;
+      --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    ::selection {
+      background: var(--green);
+      color: var(--bg);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* ── Layout ────────────────────────────────────────── */
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 120px 0;
+    }
+
+    @media (max-width: 768px) {
+      section {
+        padding: 80px 0;
+      }
+    }
+
+    /* ── Navigation ────────────────────────────────────── */
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-logo {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-logo svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-cta {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--bg) !important;
+      background: var(--text);
+      padding: 8px 16px;
+      border-radius: 6px;
+      transition: opacity 0.2s;
+    }
+
+    .nav-cta:hover {
+      opacity: 0.85;
+    }
+
+    @media (max-width: 600px) {
+      .nav-links a:not(.nav-cta) {
+        display: none;
+      }
+    }
+
+    /* ── Hero ──────────────────────────────────────────── */
+
+    .hero {
+      padding-top: 180px;
+      padding-bottom: 120px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        padding-top: 140px;
+        padding-bottom: 80px;
+      }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.035em;
+      max-width: 820px;
+      margin: 0 auto 24px;
+    }
+
+    .hero h1 .highlight {
+      color: var(--green);
+    }
+
+    .hero-sub {
+      font-size: clamp(17px, 2.2vw, 20px);
+      color: var(--text-secondary);
+      max-width: 580px;
+      margin: 0 auto 48px;
+      line-height: 1.5;
+    }
+
+    .hero-ctas {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover {
+      background: #1db954;
+      box-shadow: 0 0 24px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid #333;
+    }
+
+    .btn-secondary:hover {
+      border-color: #555;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ── Section Headings ─────────────────────────────── */
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.6;
+    }
+
+    /* ── Problem ───────────────────────────────────────── */
+
+    .problem {
+      border-top: 1px solid var(--border);
+    }
+
+    .problem-content {
+      max-width: 680px;
+    }
+
+    .problem-timeline {
+      margin-top: 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .problem-step {
+      display: flex;
+      gap: 20px;
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .problem-step:last-child {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .problem-time {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text-tertiary);
+      min-width: 60px;
+      padding-top: 2px;
+    }
+
+    .problem-text {
+      font-size: 16px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .problem-step.bad .problem-time {
+      color: #ef4444;
+    }
+
+    .problem-step.bad .problem-text {
+      color: #ef4444;
+    }
+
+    /* ── How It Works ──────────────────────────────────── */
+
+    .how-it-works {
+      border-top: 1px solid var(--border);
+    }
+
+    .steps {
+      margin-top: 64px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+    }
+
+    .step {
+      padding: 40px 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .step:first-child {
+      border-radius: 12px 0 0 12px;
+    }
+
+    .step:last-child {
+      border-radius: 0 12px 12px 0;
+    }
+
+    @media (max-width: 768px) {
+      .step:first-child {
+        border-radius: 12px 12px 0 0;
+      }
+      .step:last-child {
+        border-radius: 0 0 12px 12px;
+      }
+    }
+
+    .step-number {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .step h3 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Terminal Demo ─────────────────────────────────── */
+
+    .demo {
+      border-top: 1px solid var(--border);
+    }
+
+    .terminal {
+      margin-top: 48px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #333;
+    }
+
+    .terminal-title {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+      margin-left: 8px;
+    }
+
+    .terminal-body {
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .terminal-body pre {
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    .terminal-body .prompt {
+      color: var(--green);
+    }
+
+    .terminal-body .cmd {
+      color: var(--text);
+    }
+
+    .terminal-body .dim {
+      color: var(--text-tertiary);
+    }
+
+    .terminal-body .key {
+      color: #60a5fa;
+    }
+
+    .terminal-body .str {
+      color: var(--green);
+    }
+
+    .terminal-body .num {
+      color: #f59e0b;
+    }
+
+    .terminal-body .err {
+      color: #ef4444;
+    }
+
+    .terminal-body .ok {
+      color: var(--green);
+    }
+
+    @media (max-width: 768px) {
+      .terminal-body {
+        padding: 16px;
+      }
+      .terminal-body pre {
+        font-size: 11px;
+      }
+    }
+
+    /* ── Features Grid ────────────────────────────────── */
+
+    .features {
+      border-top: 1px solid var(--border);
+    }
+
+    .features-grid {
+      margin-top: 64px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+
+    @media (max-width: 900px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature {
+      padding: 36px 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .feature:first-child {
+      border-radius: 12px 0 0 0;
+    }
+
+    .feature:nth-child(3) {
+      border-radius: 0 12px 0 0;
+    }
+
+    .feature:nth-child(4) {
+      border-radius: 0 0 0 12px;
+    }
+
+    .feature:last-child {
+      border-radius: 0 0 12px 0;
+    }
+
+    @media (max-width: 900px) {
+      .feature:nth-child(3) {
+        border-radius: 0;
+      }
+      .feature:nth-child(4) {
+        border-radius: 0;
+      }
+      .feature:first-child {
+        border-radius: 12px 0 0 0;
+      }
+      .feature:nth-child(2) {
+        border-radius: 0 12px 0 0;
+      }
+      .feature:nth-child(5) {
+        border-radius: 0 0 0 12px;
+      }
+      .feature:last-child {
+        border-radius: 0 0 12px 0;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .feature {
+        border-radius: 0 !important;
+      }
+      .feature:first-child {
+        border-radius: 12px 12px 0 0 !important;
+      }
+      .feature:last-child {
+        border-radius: 0 0 12px 12px !important;
+      }
+    }
+
+    .feature h3 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .feature p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Install Section ──────────────────────────────── */
+
+    .install {
+      border-top: 1px solid var(--border);
+    }
+
+    .install-content {
+      max-width: 720px;
+    }
+
+    .install-block {
+      margin-top: 48px;
+    }
+
+    .install-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      position: relative;
+      margin-bottom: 32px;
+    }
+
+    .code-block code {
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      white-space: pre;
+    }
+
+    .code-block .cmd {
+      color: var(--text);
+    }
+
+    .code-block .flag {
+      color: #60a5fa;
+    }
+
+    .code-block .str {
+      color: var(--green);
+    }
+
+    .code-block .comment {
+      color: var(--text-tertiary);
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      transition: all 0.2s;
+      font-family: var(--sans);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-btn:hover {
+      color: var(--text-secondary);
+      border-color: #333;
+    }
+
+    .copy-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .install-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 15px;
+      color: var(--green);
+      transition: opacity 0.2s;
+    }
+
+    .install-link:hover {
+      opacity: 0.8;
+    }
+
+    .install-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ── Footer ────────────────────────────────────────── */
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 0;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-brand {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .footer-tagline {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    /* ── Animations ────────────────────────────────────── */
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <a href="#" class="nav-logo">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 6v20M9 16l10-10M9 16l10 10" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Klarsicht
+      </a>
+      <div class="nav-links">
+        <a href="#how-it-works">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="https://gitlab.com/outcept/klarsicht" target="_blank" rel="noopener" class="nav-cta">GitLab</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Open source &middot; Self-hosted
+      </div>
+      <h1>Alert fires. Root cause <span class="highlight">in&nbsp;seconds</span>, not&nbsp;hours.</h1>
+      <p class="hero-sub">Klarsicht is an AI agent that receives your Grafana alerts, inspects Kubernetes workloads, and delivers root cause analyses with fix steps before you finish your coffee.</p>
+      <div class="hero-ctas">
+        <a href="#install" class="btn btn-primary">Deploy Now</a>
+        <a href="https://gitlab.com/outcept/klarsicht" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/></svg>
+          View on GitLab
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="problem">
+    <div class="container">
+      <div class="problem-content fade-in">
+        <p class="section-label">The problem</p>
+        <h2 class="section-title">You already know this drill</h2>
+        <p class="section-desc">Every on-call engineer has lived this. The page comes in, and the clock starts ticking.</p>
+        <div class="problem-timeline">
+          <div class="problem-step">
+            <span class="problem-time">03:12</span>
+            <span class="problem-text">PagerDuty fires. Pod CrashLoopBackOff in production.</span>
+          </div>
+          <div class="problem-step">
+            <span class="problem-time">03:14</span>
+            <span class="problem-text">SSH into bastion, switch kubecontext. Which namespace again?</span>
+          </div>
+          <div class="problem-step">
+            <span class="problem-time">03:22</span>
+            <span class="problem-text">kubectl logs, kubectl describe. Scroll through walls of text looking for clues.</span>
+          </div>
+          <div class="problem-step">
+            <span class="problem-time">03:41</span>
+            <span class="problem-text">Open Grafana. Compare metrics. Check if the deploy happened before or after the spike.</span>
+          </div>
+          <div class="problem-step">
+            <span class="problem-time">04:08</span>
+            <span class="problem-text">Ask a colleague in Slack. They're asleep.</span>
+          </div>
+          <div class="problem-step bad">
+            <span class="problem-time">05:15</span>
+            <span class="problem-text">Finally find the root cause. 2 hours of context-switching, half-asleep debugging.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="fade-in">
+        <p class="section-label">How it works</p>
+        <h2 class="section-title">From alert to root cause in three steps</h2>
+        <p class="section-desc">Point your Grafana webhook at Klarsicht. The AI agent handles the rest.</p>
+      </div>
+      <div class="steps fade-in">
+        <div class="step">
+          <div class="step-number">01</div>
+          <h3>Alert fires</h3>
+          <p>Grafana sends a webhook to Klarsicht when any alert triggers. No new alert rules needed &mdash; your existing setup works as-is.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">02</div>
+          <h3>Agent investigates</h3>
+          <p>The AI agent inspects pods, reads logs, pulls events, and queries Prometheus metrics via the Kubernetes API. Like a senior SRE, but instant.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">03</div>
+          <h3>RCA delivered</h3>
+          <p>A structured root cause analysis with a timeline, impact assessment, fix steps, and a postmortem draft lands in your dashboard within seconds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Terminal Demo -->
+  <section class="demo" id="demo">
+    <div class="container">
+      <div class="fade-in">
+        <p class="section-label">See it in action</p>
+        <h2 class="section-title">Real output, not a mockup</h2>
+        <p class="section-desc">Here's what Klarsicht produces when a CrashLoopBackOff alert fires in production.</p>
+      </div>
+      <div class="terminal fade-in">
+        <div class="terminal-bar">
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-title">klarsicht &mdash; investigation output</span>
+        </div>
+        <div class="terminal-body">
+          <pre>
+<span class="prompt">$</span> <span class="cmd">klarsicht investigate --alert grafana-webhook-4821</span>
+
+<span class="dim">&#9581;&#9472; Received alert: PodCrashLoopBackOff</span>
+<span class="dim">&#9475;  namespace: production  pod: api-gateway-7f8b9c4d6-x2k9p</span>
+<span class="dim">&#9475;</span>
+<span class="dim">&#9507;&#9472; Inspecting pod status...</span>
+<span class="dim">&#9475;  State: CrashLoopBackOff (7 restarts in 12m)</span>
+<span class="dim">&#9475;  Exit code: 1  Reason: Error</span>
+<span class="dim">&#9475;</span>
+<span class="dim">&#9507;&#9472; Reading container logs (last 200 lines)...</span>
+<span class="dim">&#9475;</span>  <span class="err">FATAL: failed to connect to postgres:5432</span>
+<span class="dim">&#9475;</span>  <span class="err">  error: connection refused</span>
+<span class="dim">&#9475;</span>  <span class="err">  retries exhausted after 30s</span>
+<span class="dim">&#9475;</span>
+<span class="dim">&#9507;&#9472; Checking related resources...</span>
+<span class="dim">&#9475;  Service postgres.production: endpoints = 0/1 ready</span>
+<span class="dim">&#9475;  Pod postgres-0: OOMKilled at 03:09:41 (memory limit: 512Mi)</span>
+<span class="dim">&#9475;</span>
+<span class="dim">&#9507;&#9472; Querying Prometheus metrics...</span>
+<span class="dim">&#9475;  container_memory_working_set_bytes{pod="postgres-0"}</span>
+<span class="dim">&#9475;  Peak: 509Mi at 03:09:38 (limit: 512Mi)</span>
+<span class="dim">&#9475;  Query volume +340% in last 2h (batch job started at 01:15)</span>
+<span class="dim">&#9475;</span>
+<span class="dim">&#9495;&#9472;</span> <span class="ok">Investigation complete (14.2s)</span>
+
+<span class="dim">&#9472;&#9472;&#9472; Root Cause Analysis &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+
+<span class="key">root_cause:</span>
+  The postgres-0 pod was OOMKilled due to a memory spike
+  caused by an overnight batch job (cron-etl-daily) that
+  increased query volume by 340%. The api-gateway pod
+  entered CrashLoopBackOff because it cannot start without
+  a Postgres connection.
+
+<span class="key">chain_of_events:</span>
+  <span class="str">01:15</span>  cron-etl-daily job started, issuing heavy queries
+  <span class="str">03:09</span>  postgres-0 memory hit 509Mi/512Mi limit, OOMKilled
+  <span class="str">03:09</span>  postgres service endpoints dropped to 0
+  <span class="str">03:10</span>  api-gateway failed health check, restarted
+  <span class="str">03:12</span>  api-gateway entered CrashLoopBackOff after 3 failures
+
+<span class="key">impact:</span>
+  API gateway unreachable. All downstream services returning
+  502. Estimated user impact: 100% of API traffic.
+
+<span class="key">fix_steps:</span>
+  <span class="num">1.</span> Increase postgres-0 memory limit to 1Gi
+     <span class="dim">kubectl patch statefulset postgres -n production \</span>
+     <span class="dim">  -p '{"spec":{"template":{"spec":{"containers":[{"name":"postgres","resources":{"limits":{"memory":"1Gi"}}}]}}}}'</span>
+  <span class="num">2.</span> Restart api-gateway deployment
+     <span class="dim">kubectl rollout restart deployment/api-gateway -n production</span>
+  <span class="num">3.</span> Schedule cron-etl-daily during off-peak hours
+  <span class="num">4.</span> Add PodDisruptionBudget for postgres StatefulSet
+
+<span class="key">severity:</span> <span class="err">critical</span>
+<span class="key">time_to_rca:</span> <span class="ok">14.2 seconds</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="fade-in">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Everything you need, nothing you don't</h2>
+      </div>
+      <div class="features-grid fade-in">
+        <div class="feature">
+          <h3>Kubernetes-native</h3>
+          <p>Reads pods, logs, events, and deployments directly via the K8s API. Understands your cluster topology, not just individual resources.</p>
+        </div>
+        <div class="feature">
+          <h3>Prometheus &amp; Mimir compatible</h3>
+          <p>Queries PromQL to detect anomalies in CPU, memory, network, and custom metrics. Works with Prometheus, Mimir, or any compatible backend.</p>
+        </div>
+        <div class="feature">
+          <h3>Structured postmortems</h3>
+          <p>Generates a timeline, impact assessment, and action items. Copy as Markdown, paste into your incident channel or wiki. Done.</p>
+        </div>
+        <div class="feature">
+          <h3>Self-hosted</h3>
+          <p>Runs inside your cluster. Logs and metrics never leave your infrastructure. Meets data residency requirements out of the box.</p>
+        </div>
+        <div class="feature">
+          <h3>Helm install</h3>
+          <p>One command, five minutes. Deploys into your existing monitoring stack alongside Grafana and Prometheus. No migration needed.</p>
+        </div>
+        <div class="feature">
+          <h3>Works with existing alerts</h3>
+          <p>Point a Grafana webhook contact point at Klarsicht. Your current alert rules, thresholds, and routing stay exactly the same.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="install" id="install">
+    <div class="container">
+      <div class="install-content fade-in">
+        <p class="section-label">Get started</p>
+        <h2 class="section-title">Deploy in five minutes</h2>
+        <p class="section-desc">Three commands. Three environment variables. Your first root cause analysis in under a minute.</p>
+
+        <div class="install-block">
+          <p class="install-label">1. Add the Helm repo and install</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <code><span class="comment"># Add the Klarsicht Helm repository</span>
+helm repo add klarsicht https://gitlab.com/api/v4/projects/outcept%2Fklarsicht/packages/helm/stable
+helm repo update
+
+<span class="comment"># Install into your cluster</span>
+helm install klarsicht klarsicht/klarsicht \
+  <span class="flag">--namespace</span> klarsicht \
+  <span class="flag">--create-namespace</span> \
+  <span class="flag">--set</span> config.grafanaWebhookSecret=<span class="str">&lt;your-webhook-secret&gt;</span> \
+  <span class="flag">--set</span> config.llmApiKey=<span class="str">&lt;your-api-key&gt;</span> \
+  <span class="flag">--set</span> config.prometheusUrl=<span class="str">http://prometheus.monitoring:9090</span></code>
+          </div>
+
+          <p class="install-label">2. Configure Grafana contact point</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <code><span class="comment"># In Grafana: Alerting → Contact points → New contact point</span>
+<span class="comment"># Type: Webhook</span>
+<span class="comment"># URL:</span>
+http://klarsicht.klarsicht.svc.cluster.local:8080/api/v1/webhook/grafana</code>
+          </div>
+
+          <p class="install-label">3. Trigger an alert or send a test</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <code><span class="comment"># Send a test alert from Grafana, or use the CLI:</span>
+kubectl port-forward svc/klarsicht <span class="flag">-n</span> klarsicht 8080:8080
+curl <span class="flag">-X</span> POST http://localhost:8080/api/v1/test-alert</code>
+          </div>
+
+          <a href="https://gitlab.com/outcept/klarsicht/-/blob/main/README.md" target="_blank" rel="noopener" class="install-link">
+            Read the full setup guide
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-left">
+          <span class="footer-brand">Built by Outcept</span>
+          <span class="footer-tagline">Self-hosted. Open source. Your data stays yours.</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://gitlab.com/outcept/klarsicht" target="_blank" rel="noopener">GitLab</a>
+          <a href="https://gitlab.com/outcept/klarsicht/-/blob/main/README.md" target="_blank" rel="noopener">Docs</a>
+          <a href="https://gitlab.com/outcept/klarsicht/-/issues" target="_blank" rel="noopener">Issues</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Scroll-triggered fade-in ──────────────────────
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+
+    // ── Copy button ───────────────────────────────────
+    function copyCode(btn) {
+      const codeBlock = btn.closest('.code-block');
+      const code = codeBlock.querySelector('code');
+      const text = code.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Copied
+        `;
+        setTimeout(() => {
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          `;
+        }, 2000);
+      });
+    }
+
+    // ── Smooth scroll for anchor links ────────────────
+    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+      anchor.addEventListener('click', (e) => {
+        const target = document.querySelector(anchor.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

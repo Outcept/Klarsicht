@@ -1,5 +1,62 @@
 import { useState, useCallback } from "react";
 
+const TEST_CRASHLOOP_YAML = `# test-crashloop.yaml
+# A deployment that deliberately crash-loops due to a missing DATABASE_URL env var.
+# Apply this to test Klarsicht's RCA pipeline end-to-end.
+#
+# Usage:
+#   kubectl apply -f test-crashloop.yaml
+#   Watch Klarsicht investigate: https://klarsicht.vibebros.net/incidents
+#   Clean up: kubectl delete -f test-crashloop.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-crashloop
+  namespace: demo
+  labels:
+    app: test-crashloop
+    purpose: klarsicht-testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-crashloop
+  template:
+    metadata:
+      labels:
+        app: test-crashloop
+    spec:
+      containers:
+        - name: app
+          image: python:3.13-slim
+          command:
+            - python3
+            - "-c"
+            - |
+              import os, sys, time
+              time.sleep(2)  # Brief pause so logs are visible
+              db_url = os.environ.get("DATABASE_URL")
+              if not db_url:
+                  print("ERROR: DATABASE_URL environment variable is not set", file=sys.stderr)
+                  print("The application cannot start without a database connection.", file=sys.stderr)
+                  sys.exit(1)
+              print(f"Connected to {db_url}")
+          # Note: DATABASE_URL is intentionally NOT set, causing the crash.
+          resources:
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+            requests:
+              memory: "32Mi"
+              cpu: "50m"`;
+
+
 const WEBHOOK_URL = `${window.location.protocol}//${window.location.host}/api/alert`;
 const INTERNAL_URL = "http://klarsicht-agent.klarsicht.svc:8000/alert";
 
@@ -64,7 +121,30 @@ pod = {{ $labels.pod }}`} />
         </Card>
 
         {/* Step 4 */}
-        <Card step={4} title="Verify">
+        <Card step={4} title="Test with a Real Failure">
+          <p className="text-sm text-[#888] mb-4">
+            Deploy a pod that <strong className="text-white">intentionally crashes</strong> due to a missing <code className="text-[#22c55e] bg-white/[0.05] px-1 rounded text-xs">DATABASE_URL</code> environment variable. This triggers a real CrashLoopBackOff that Klarsicht can investigate end-to-end.
+          </p>
+          <p className="text-sm text-[#888] mb-3">Save this YAML and apply it to your cluster:</p>
+          <CodeBlock code={TEST_CRASHLOOP_YAML} />
+          <div className="mt-4 space-y-3">
+            <div>
+              <p className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">Apply</p>
+              <CodeBlock code="kubectl apply -f test-crashloop.yaml" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">Clean up</p>
+              <CodeBlock code="kubectl delete -f test-crashloop.yaml" />
+            </div>
+          </div>
+          <p className="text-xs text-[#555] mt-4">
+            Requires a Grafana alert rule for CrashLoopBackOff (Step 3) so the alert fires and reaches Klarsicht.
+            If you just want to test the mock path without a real cluster failure, use the <strong className="text-[#888]">Send Test Alert</strong> button above instead.
+          </p>
+        </Card>
+
+        {/* Step 5 */}
+        <Card step={5} title="Verify">
           <p className="text-sm text-[#888] mb-4">
             Send a test alert using the button above, or wait for a real alert to fire. Once received, Klarsicht will:
           </p>
@@ -230,7 +310,7 @@ function TestAlertCard() {
         <div>
           <h3 className="text-sm font-semibold text-white mb-1">Test Alert</h3>
           <p className="text-xs text-[#888]">
-            Send a mock CrashLoopBackOff alert to verify the pipeline works end-to-end.
+            Send a mock CrashLoopBackOff alert (simulates a <code className="text-[#22c55e] bg-white/[0.05] px-1 rounded">test-crashloop</code> pod with a missing DATABASE_URL) to verify the pipeline works end-to-end.
           </p>
         </div>
         <button
