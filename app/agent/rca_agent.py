@@ -55,16 +55,28 @@ def _build_investigation_message(alert: Alert) -> str:
 
 
 def _parse_agent_output(text: str) -> dict[str, Any]:
-    """Extract JSON from the agent's final response."""
-    # Try to parse directly
+    """Extract JSON from the agent's final response, even if surrounded by text."""
     text = text.strip()
+
     # Strip markdown fences if present
-    if text.startswith("```"):
+    if "```" in text:
         lines = text.split("\n")
         lines = [l for l in lines if not l.startswith("```")]
-        text = "\n".join(lines)
+        text = "\n".join(lines).strip()
 
-    return json.loads(text)
+    # Try direct parse first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Find the first { and last } to extract embedded JSON
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return json.loads(text[start:end + 1])
+
+    raise json.JSONDecodeError("No JSON object found", text, 0)
 
 
 def _build_rca_result(
