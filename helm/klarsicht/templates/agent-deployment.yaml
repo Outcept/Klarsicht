@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "klarsicht.fullname" . }}-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "klarsicht.agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.agent.replicas }}
+  selector:
+    matchLabels:
+      {{- include "klarsicht.agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "klarsicht.agent.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "klarsicht.serviceAccountName" . }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: agent
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: KLARSICHT_LLM_PROVIDER
+              value: {{ .Values.agent.llmProvider | quote }}
+            - name: KLARSICHT_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: llm-api-key
+            - name: KLARSICHT_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: webhook-secret
+            {{- if .Values.agent.metricsEndpoint }}
+            - name: KLARSICHT_MIMIR_ENDPOINT
+              value: {{ .Values.agent.metricsEndpoint | quote }}
+            {{- end }}
+            - name: KLARSICHT_WATCH_NAMESPACES
+              value: {{ include "klarsicht.watchNamespaces" . | quote }}
+            {{- if .Values.postgres.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: postgres-password
+            - name: KLARSICHT_DATABASE_URL
+              value: {{ include "klarsicht.databaseURL" . | quote }}
+            {{- else if .Values.externalDatabase.url }}
+            - name: KLARSICHT_DATABASE_URL
+              value: {{ .Values.externalDatabase.url | quote }}
+            {{- end }}
+            {{- if .Values.slack.webhookUrl }}
+            - name: KLARSICHT_SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: slack-webhook-url
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}

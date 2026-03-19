@@ -1,0 +1,98 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  AGENT_IMAGE: ${CI_REGISTRY_IMAGE}/agent
+  DASHBOARD_IMAGE: ${CI_REGISTRY_IMAGE}/dashboard
+
+# --- Test ---
+
+test:
+  stage: test
+  image: python:3.13-slim
+  script:
+    - pip install -e ".[dev]"
+    - python -m pytest tests/ -v --ignore=tests/test_k8s_tools.py
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# --- Build ---
+
+build-agent:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64)\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile.agent"
+      --destination "${AGENT_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${AGENT_IMAGE}:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build-dashboard:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64)\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile.dashboard"
+      --destination "${DASHBOARD_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${DASHBOARD_IMAGE}:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# --- Deploy ---
+# Requires CI/CD variables:
+#   KLARSICHT_LLM_API_KEY    - Anthropic API key
+#   KLARSICHT_WEBHOOK_SECRET - HMAC secret for Grafana webhook (optional)
+#   KUBE_CONTEXT             - GitLab agent context, e.g. outcept/klarsicht:test-agent
+
+deploy:
+  stage: deploy
+  image:
+    name: alpine/helm:3.17.3
+    entrypoint: [""]
+  before_script:
+    - |
+      if [ -n "$KUBE_CONTEXT" ]; then
+        kubectl config use-context "$KUBE_CONTEXT"
+      fi
+    - kubectl create namespace klarsicht --dry-run=client -o yaml | kubectl apply -f -
+    - >-
+      kubectl create secret docker-registry gitlab-registry
+      --namespace=klarsicht
+      --docker-server=${CI_REGISTRY}
+      --docker-username=${CI_DEPLOY_USER}
+      --docker-password=${CI_DEPLOY_PASSWORD}
+      --dry-run=client -o yaml | kubectl apply -f -
+  script:
+    - >-
+      helm upgrade --install klarsicht helm/klarsicht/
+      -f helm/values-vibebros.yaml
+      -n klarsicht --create-namespace
+      --set agent.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set dashboard.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set agent.llmApiKey=${KLARSICHT_LLM_API_KEY}
+      --set grafana.webhookSecret=${KLARSICHT_WEBHOOK_SECRET:-""}
+      --wait --timeout 5m
+  environment:
+    name: production
+    kubernetes:
+      namespace: klarsicht
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual

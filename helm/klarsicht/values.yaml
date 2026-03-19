@@ -1,0 +1,60 @@
+imagePullSecrets: []
+#  - name: gitlab-registry
+
+agent:
+  image:
+    repository: registry.gitlab.com/outcept/klarsicht/agent
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  watchNamespaces: []        # empty = all namespaces
+  metricsEndpoint: ""        # Prometheus: http://prometheus:9090, Mimir: http://mimir:9009/prometheus
+  llmProvider: anthropic     # or openai
+  llmApiKey: ""              # from secret ref
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+dashboard:
+  image:
+    repository: registry.gitlab.com/outcept/klarsicht/dashboard
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  ingress:
+    enabled: false
+    className: ""
+    host: ""
+    tls: []
+
+postgres:
+  enabled: true              # set false to use external DB
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  storage: 5Gi
+  storageClassName: ""
+  password: ""               # auto-generated if empty
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+grafana:
+  webhookPath: /alert
+  webhookSecret: ""          # HMAC shared secret
+
+slack:
+  webhookUrl: ""
+
+# Override the database URL when using an external database
+externalDatabase:
+  url: ""
