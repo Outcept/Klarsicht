@@ -40,3 +40,25 @@ export interface IncidentEntry {
 }
 
 export type IncidentsResponse = Record<string, IncidentEntry>;
+
+export interface StatsRecentIncident {
+  incident_id: string;
+  alert_name: string;
+  namespace: string;
+  pod: string;
+  status: "completed" | "investigating" | "failed";
+  confidence: number | null;
+  started_at: string | null;
+}
+
+export interface StatsResponse {
+  total_incidents: number;
+  completed: number;
+  investigating: number;
+  failed: number;
+  avg_investigation_seconds: number;
+  top_alerts: { alert_name: string; count: number }[];
+  top_namespaces: { namespace: string; count: number }[];
+  recent_incidents: StatsRecentIncident[];
+  category_breakdown: { category: string; count: number }[];
+}

@@ -145,7 +145,7 @@ export default function IncidentDetail() {
     <Page>
       {/* Back */}
       <Link
-        to="/"
+        to="/incidents"
         className="inline-flex items-center gap-1.5 text-sm text-[#888] hover:text-white transition-colors mb-8"
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

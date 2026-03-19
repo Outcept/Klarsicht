@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import Overview from "./pages/Overview";
 import IncidentList from "./pages/IncidentList";
 import IncidentDetail from "./pages/IncidentDetail";
 import Setup from "./pages/Setup";
@@ -19,6 +20,9 @@ function Nav() {
         </NavLink>
         <nav className="flex items-center gap-6">
           <NavLink to="/" end className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
+            Overview
+          </NavLink>
+          <NavLink to="/incidents" className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
             Incidents
           </NavLink>
           <NavLink to="/setup" className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
@@ -36,7 +40,8 @@ export default function App() {
       <div className="min-h-screen bg-black text-white">
         <Nav />
         <Routes>
-          <Route path="/" element={<IncidentList />} />
+          <Route path="/" element={<Overview />} />
+          <Route path="/incidents" element={<IncidentList />} />
           <Route path="/incidents/:id" element={<IncidentDetail />} />
           <Route path="/setup" element={<Setup />} />
         </Routes>

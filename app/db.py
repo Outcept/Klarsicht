@@ -171,3 +171,104 @@ async def list_incidents() -> dict[str, Any]:
         """
     )
     return {str(row["id"]): _row_to_incident(row) for row in rows}
+
+
+async def get_stats() -> dict[str, Any]:
+    """Aggregate incident statistics for the overview dashboard."""
+    pool = _get_pool()
+
+    # Status counts
+    status_rows = await pool.fetch(
+        "SELECT status, COUNT(*) AS cnt FROM incidents GROUP BY status"
+    )
+    status_counts: dict[str, int] = {row["status"]: row["cnt"] for row in status_rows}
+    total = sum(status_counts.values())
+    completed = status_counts.get("completed", 0)
+    investigating = status_counts.get("investigating", 0)
+    failed = status_counts.get("failed", 0)
+
+    # Average investigation time (seconds) for completed incidents
+    avg_row = await pool.fetchrow(
+        """
+        SELECT AVG(EXTRACT(EPOCH FROM (r.investigated_at - i.started_at))) AS avg_secs
+        FROM incidents i
+        JOIN rca_results r ON r.incident_id = i.id
+        WHERE i.status = 'completed'
+        """
+    )
+    avg_secs = float(avg_row["avg_secs"]) if avg_row and avg_row["avg_secs"] is not None else 0.0
+
+    # Top alerts
+    top_alert_rows = await pool.fetch(
+        """
+        SELECT alert_name, COUNT(*) AS cnt
+        FROM incidents
+        GROUP BY alert_name
+        ORDER BY cnt DESC
+        LIMIT 10
+        """
+    )
+    top_alerts = [{"alert_name": r["alert_name"], "count": r["cnt"]} for r in top_alert_rows]
+
+    # Top namespaces
+    top_ns_rows = await pool.fetch(
+        """
+        SELECT namespace, COUNT(*) AS cnt
+        FROM incidents
+        GROUP BY namespace
+        ORDER BY cnt DESC
+        LIMIT 10
+        """
+    )
+    top_namespaces = [{"namespace": r["namespace"], "count": r["cnt"]} for r in top_ns_rows]
+
+    # Recent incidents (last 5)
+    recent_rows = await pool.fetch(
+        """
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.started_at,
+               r.root_cause
+        FROM incidents i
+        LEFT JOIN rca_results r ON r.incident_id = i.id
+        ORDER BY i.created_at DESC
+        LIMIT 5
+        """
+    )
+    recent: list[dict[str, Any]] = []
+    for row in recent_rows:
+        confidence: float | None = None
+        if row["root_cause"]:
+            rc_data = json.loads(row["root_cause"])
+            confidence = rc_data.get("confidence")
+        recent.append({
+            "incident_id": str(row["id"]),
+            "alert_name": row["alert_name"],
+            "namespace": row["namespace"],
+            "pod": row["pod"],
+            "status": row["status"],
+            "confidence": confidence,
+            "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+        })
+
+    # Category breakdown from root_cause JSONB
+    cat_rows = await pool.fetch(
+        """
+        SELECT r.root_cause->>'category' AS category, COUNT(*) AS cnt
+        FROM rca_results r
+        WHERE r.root_cause IS NOT NULL AND r.root_cause->>'category' IS NOT NULL
+        GROUP BY category
+        ORDER BY cnt DESC
+        """
+    )
+    category_breakdown = [{"category": r["category"], "count": r["cnt"]} for r in cat_rows]
+
+    return {
+        "total_incidents": total,
+        "completed": completed,
+        "investigating": investigating,
+        "failed": failed,
+        "avg_investigation_seconds": round(avg_secs, 1),
+        "top_alerts": top_alerts,
+        "top_namespaces": top_namespaces,
+        "recent_incidents": recent,
+        "category_breakdown": category_breakdown,
+    }

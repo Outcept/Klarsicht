@@ -87,7 +87,7 @@ pod = {{ $labels.pod }}`} />
             </li>
           </ol>
           <p className="text-sm text-[#888] mt-4">
-            Results appear on the <a href="/" className="text-white hover:underline underline-offset-4 decoration-white/30">Incidents</a> page.
+            Results appear on the <a href="/incidents" className="text-white hover:underline underline-offset-4 decoration-white/30">Incidents</a> page.
           </p>
         </Card>
 

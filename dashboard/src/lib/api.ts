@@ -1,4 +1,4 @@
-import type { IncidentEntry, IncidentsResponse } from "./types";
+import type { IncidentEntry, IncidentsResponse, StatsResponse } from "./types";
 
 const BASE = "/api";
 
@@ -11,5 +11,11 @@ export async function fetchIncidents(): Promise<IncidentsResponse> {
 export async function fetchIncident(id: string): Promise<IncidentEntry> {
   const res = await fetch(`${BASE}/incidents/${encodeURIComponent(id)}`);
   if (!res.ok) throw new Error(`Failed to fetch incident ${id}: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchStats(): Promise<StatsResponse> {
+  const res = await fetch(`${BASE}/stats`);
+  if (!res.ok) throw new Error(`Failed to fetch stats: ${res.status}`);
   return res.json();
 }

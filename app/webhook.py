@@ -176,6 +176,77 @@ async def send_test_alert(request: Request):
     }
 
 
+@app.get("/stats")
+async def stats_endpoint():
+    """Return aggregated incident statistics for the overview dashboard."""
+    if _use_db:
+        from app.db import get_stats
+        return await get_stats()
+
+    # In-memory computation
+    from collections import Counter
+    from app.models.rca import RCAResult as _RCA
+
+    total = len(_memory_store)
+    completed = 0
+    investigating = 0
+    failed = 0
+    alert_counter: Counter[str] = Counter()
+    ns_counter: Counter[str] = Counter()
+    cat_counter: Counter[str] = Counter()
+    investigation_times: list[float] = []
+    recent: list[dict] = []
+
+    for iid, result in _memory_store.items():
+        if result is not None:
+            completed += 1
+            alert_counter[result.alert_name] += 1
+            ns_counter[result.namespace] += 1
+            if result.root_cause and result.root_cause.category:
+                cat_counter[result.root_cause.category] += 1
+            delta = (result.investigated_at - result.started_at).total_seconds()
+            if delta >= 0:
+                investigation_times.append(delta)
+            confidence = result.root_cause.confidence if result.root_cause else None
+            recent.append({
+                "incident_id": iid,
+                "alert_name": result.alert_name,
+                "namespace": result.namespace,
+                "pod": result.pod,
+                "status": "completed",
+                "confidence": confidence,
+                "started_at": result.started_at.isoformat(),
+            })
+        else:
+            investigating += 1
+            recent.append({
+                "incident_id": iid,
+                "alert_name": "unknown",
+                "namespace": "unknown",
+                "pod": "unknown",
+                "status": "investigating",
+                "confidence": None,
+                "started_at": None,
+            })
+
+    avg_secs = round(sum(investigation_times) / len(investigation_times), 1) if investigation_times else 0.0
+    top_alerts = [{"alert_name": name, "count": cnt} for name, cnt in alert_counter.most_common(10)]
+    top_namespaces = [{"namespace": ns, "count": cnt} for ns, cnt in ns_counter.most_common(10)]
+    category_breakdown = [{"category": cat, "count": cnt} for cat, cnt in cat_counter.most_common()]
+
+    return {
+        "total_incidents": total,
+        "completed": completed,
+        "investigating": investigating,
+        "failed": failed,
+        "avg_investigation_seconds": avg_secs,
+        "top_alerts": top_alerts,
+        "top_namespaces": top_namespaces,
+        "recent_incidents": recent[:5],
+        "category_breakdown": category_breakdown,
+    }
+
+
 @app.get("/incidents")
 async def list_incidents_endpoint():
     """List all incidents and their investigation status."""
