@@ -64,7 +64,7 @@ build-dashboard:
 deploy:
   stage: deploy
   image:
-    name: alpine/helm:3.17.3
+    name: dtzar/helm-kubectl:3.17.3
     entrypoint: [""]
   before_script:
     - |
