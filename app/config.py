@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -7,9 +8,16 @@ class Settings(BaseSettings):
     watch_namespaces: list[str] = []
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
-    database_url: str = "postgresql://klarsicht:klarsicht@localhost:5432/klarsicht"
+    database_url: str = ""
 
     model_config = {"env_prefix": "KLARSICHT_"}
+
+    @field_validator("watch_namespaces", mode="before")
+    @classmethod
+    def parse_namespaces(cls, v):
+        if isinstance(v, str):
+            return [ns.strip() for ns in v.split(",") if ns.strip()]
+        return v
 
 
 settings = Settings()
