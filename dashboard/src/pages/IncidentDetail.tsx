@@ -14,7 +14,7 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(text).then(() => {
@@ -26,11 +26,73 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 shrink-0 rounded px-2 py-0.5 text-xs text-[#888] hover:text-white hover:bg-white/[0.08] transition-colors"
+      className="shrink-0 rounded px-2 py-0.5 text-xs text-[#888] hover:text-white hover:bg-white/[0.08] transition-colors"
     >
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copied" : label ?? "Copy"}
     </button>
   );
+}
+
+function formatPostmortemMarkdown(r: NonNullable<IncidentEntry["result"]>): string {
+  const lines: string[] = [];
+  lines.push(`# Postmortem: ${r.alert_name}`);
+  lines.push("");
+  lines.push(`**Namespace:** ${r.namespace}  `);
+  lines.push(`**Pod:** ${r.pod}  `);
+  lines.push(`**Started:** ${r.started_at}  `);
+  lines.push(`**Investigated:** ${r.investigated_at}`);
+  lines.push("");
+
+  if (r.root_cause) {
+    lines.push("## Root Cause");
+    lines.push("");
+    lines.push(r.root_cause.summary);
+    lines.push("");
+    lines.push(`**Confidence:** ${Math.round(r.root_cause.confidence * 100)}%  `);
+    lines.push(`**Category:** ${r.root_cause.category}`);
+    if (r.root_cause.evidence.length > 0) {
+      lines.push("");
+      lines.push("### Evidence");
+      lines.push("");
+      r.root_cause.evidence.forEach((e) => lines.push(`- ${e}`));
+    }
+    lines.push("");
+  }
+
+  if (r.fix_steps.length > 0) {
+    lines.push("## Fix Steps");
+    lines.push("");
+    r.fix_steps.forEach((s) => {
+      lines.push(`${s.order}. ${s.description}`);
+      if (s.command) lines.push(`   \`\`\`\n   ${s.command}\n   \`\`\``);
+    });
+    lines.push("");
+  }
+
+  if (r.postmortem) {
+    if (r.postmortem.impact) {
+      lines.push("## Impact");
+      lines.push("");
+      lines.push(r.postmortem.impact);
+      lines.push("");
+    }
+    if (r.postmortem.timeline.length > 0) {
+      lines.push("## Timeline");
+      lines.push("");
+      lines.push("| Time | Event |");
+      lines.push("|------|-------|");
+      r.postmortem.timeline.forEach((t) => lines.push(`| ${t.timestamp} | ${t.event} |`));
+      lines.push("");
+    }
+    if (r.postmortem.action_items.length > 0) {
+      lines.push("## Action Items");
+      lines.push("");
+      r.postmortem.action_items.forEach((a) => lines.push(`- [ ] ${a}`));
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export default function IncidentDetail() {
@@ -204,7 +266,10 @@ export default function IncidentDetail() {
           {/* Postmortem */}
           {r.postmortem && (
             <section className="border border-white/[0.08] rounded-md p-6">
-              <SectionTitle>Postmortem</SectionTitle>
+              <div className="flex items-center justify-between mb-4">
+                <SectionTitle>Postmortem</SectionTitle>
+                <CopyButton text={formatPostmortemMarkdown(r)} label="Copy as Markdown" />
+              </div>
 
               {r.postmortem.impact && (
                 <div className="mb-6">
