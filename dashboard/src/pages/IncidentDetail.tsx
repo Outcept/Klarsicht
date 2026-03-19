@@ -16,7 +16,6 @@ function formatTimestamp(iso: string): string {
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -27,10 +26,9 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 shrink-0 rounded px-2 py-1 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-colors"
-      title="Copy to clipboard"
+      className="ml-2 shrink-0 rounded px-2 py-0.5 text-xs text-[#888] hover:text-white hover:bg-white/[0.08] transition-colors"
     >
-      {copied ? "Copied!" : "Copy"}
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }
@@ -51,33 +49,30 @@ export default function IncidentDetail() {
 
   if (loading) {
     return (
-      <Shell>
-        <div className="flex items-center gap-2 text-gray-400 py-20 justify-center">
-          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Loading...
+      <Page>
+        <div className="flex items-center gap-3 text-[#888] py-20 justify-center">
+          <Spinner />
+          <span className="text-sm">Loading...</span>
         </div>
-      </Shell>
+      </Page>
     );
   }
 
   if (error) {
     return (
-      <Shell>
-        <div className="rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-300 text-sm">
+      <Page>
+        <div className="rounded-md border border-red-500/20 bg-red-500/5 px-4 py-3 text-red-400 text-sm">
           {error}
         </div>
-      </Shell>
+      </Page>
     );
   }
 
   if (!data) {
     return (
-      <Shell>
-        <p className="text-gray-500">Incident not found.</p>
-      </Shell>
+      <Page>
+        <p className="text-[#888]">Incident not found.</p>
+      </Page>
     );
   }
 
@@ -85,90 +80,79 @@ export default function IncidentDetail() {
   const isCompleted = data.status === "completed";
 
   return (
-    <Shell>
-      {/* Back link */}
+    <Page>
+      {/* Back */}
       <Link
         to="/"
-        className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-[#888] hover:text-white transition-colors mb-8"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        Back to incidents
+        Back
       </Link>
 
       {/* Header */}
-      <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-6 mb-6">
+      <div className="border border-white/[0.08] rounded-md p-6 mb-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold mb-2">
+            <h2 className="text-xl font-semibold tracking-tight mb-2">
               {r?.alert_name ?? id}
             </h2>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
-              {r?.namespace && (
-                <span className="rounded bg-gray-800 px-2 py-0.5 font-mono text-xs">
-                  {r.namespace}
-                </span>
-              )}
-              {r?.pod && (
-                <span className="rounded bg-gray-800 px-2 py-0.5 font-mono text-xs">
-                  {r.pod}
-                </span>
-              )}
+            <div className="flex flex-wrap items-center gap-2">
+              {r?.namespace && <Tag>{r.namespace}</Tag>}
+              {r?.pod && <Tag>{r.pod}</Tag>}
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
             <StatusBadge status={data.status} />
-            {r?.root_cause && (
-              <CategoryTag category={r.root_cause.category} />
-            )}
+            {r?.root_cause && <CategoryTag category={r.root_cause.category} />}
           </div>
         </div>
-
         {r && (
-          <div className="mt-4 flex flex-wrap gap-6 text-sm text-gray-400 border-t border-gray-800 pt-4">
+          <div className="mt-5 flex flex-wrap gap-8 text-xs text-[#888] border-t border-white/[0.08] pt-4">
             <div>
-              <span className="text-gray-500">Started:</span>{" "}
-              {formatTimestamp(r.started_at)}
+              <span className="text-[#555]">Started</span>{" "}
+              <span className="font-mono">{formatTimestamp(r.started_at)}</span>
             </div>
             <div>
-              <span className="text-gray-500">Investigated:</span>{" "}
-              {formatTimestamp(r.investigated_at)}
+              <span className="text-[#555]">Investigated</span>{" "}
+              <span className="font-mono">{formatTimestamp(r.investigated_at)}</span>
             </div>
           </div>
         )}
       </div>
 
-      {!r && isCompleted && (
-        <p className="text-gray-500">Result data is not available yet.</p>
-      )}
-
       {!r && !isCompleted && (
-        <div className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-6 py-8 text-center">
-          <p className="text-amber-300 font-medium mb-1">Investigation in progress</p>
-          <p className="text-sm text-gray-400">Results will appear here once the analysis is complete.</p>
+        <div className="border border-white/[0.08] rounded-md px-6 py-12 text-center">
+          <div className="inline-flex items-center gap-2 text-amber-400 text-sm mb-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Investigation in progress
+          </div>
+          <p className="text-xs text-[#888]">Results will appear here once the analysis is complete.</p>
         </div>
       )}
 
       {r && (
         <div className="space-y-6">
           {/* Root Cause */}
-          <section className="rounded-lg border border-gray-800 bg-gray-900/50 p-6">
-            <h3 className="text-lg font-semibold mb-4">Root Cause</h3>
+          <section className="border border-white/[0.08] rounded-md p-6">
+            <SectionTitle>Root Cause</SectionTitle>
+            <p className="text-white/90 mb-5">{r.root_cause.summary}</p>
 
-            <p className="text-gray-200 mb-4">{r.root_cause.summary}</p>
-
-            {/* Confidence bar */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-sm mb-1.5">
-                <span className="text-gray-400">Confidence</span>
-                <span className="font-mono font-medium">
+            {/* Confidence */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="text-[#888]">Confidence</span>
+                <span className={`font-mono font-medium ${
+                  r.root_cause.confidence >= 0.8 ? "text-[#22c55e]" : "text-[#888]"
+                }`}>
                   {Math.round(r.root_cause.confidence * 100)}%
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+              <div className="h-1 rounded-full bg-white/[0.08] overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  className="h-full rounded-full bg-[#22c55e] transition-all duration-500"
                   style={{ width: `${r.root_cause.confidence * 100}%` }}
                 />
               </div>
@@ -177,13 +161,11 @@ export default function IncidentDetail() {
             {/* Evidence */}
             {r.root_cause.evidence.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-400 mb-2">Evidence</h4>
-                <ul className="space-y-1.5">
+                <h4 className="text-xs font-medium text-[#888] uppercase tracking-wider mb-3">Evidence</h4>
+                <ul className="space-y-2">
                   {r.root_cause.evidence.map((item, i) => (
-                    <li
-                      key={i}
-                      className="text-sm text-gray-300 pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-gray-600"
-                    >
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-white/70">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-[#555] shrink-0" />
                       {item}
                     </li>
                   ))}
@@ -194,19 +176,19 @@ export default function IncidentDetail() {
 
           {/* Fix Steps */}
           {r.fix_steps.length > 0 && (
-            <section className="rounded-lg border border-gray-800 bg-gray-900/50 p-6">
-              <h3 className="text-lg font-semibold mb-4">Fix Steps</h3>
+            <section className="border border-white/[0.08] rounded-md p-6">
+              <SectionTitle>Fix Steps</SectionTitle>
               <ol className="space-y-4">
                 {r.fix_steps.map((step) => (
                   <li key={step.order} className="flex gap-3">
-                    <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-900 text-xs font-bold text-indigo-300">
+                    <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.15] text-xs font-medium text-[#888]">
                       {step.order}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-gray-200 text-sm mb-1">{step.description}</p>
+                      <p className="text-sm text-white/90 mb-1">{step.description}</p>
                       {step.command && (
-                        <div className="flex items-center rounded bg-gray-950 border border-gray-800 px-3 py-2 mt-1">
-                          <code className="text-xs text-emerald-400 font-mono break-all flex-1">
+                        <div className="flex items-center rounded border border-white/[0.08] bg-white/[0.02] px-3 py-2 mt-1.5">
+                          <code className="text-xs text-[#22c55e] font-mono break-all flex-1">
                             {step.command}
                           </code>
                           <CopyButton text={step.command} />
@@ -221,44 +203,40 @@ export default function IncidentDetail() {
 
           {/* Postmortem */}
           {r.postmortem && (
-            <section className="rounded-lg border border-gray-800 bg-gray-900/50 p-6">
-              <h3 className="text-lg font-semibold mb-4">Postmortem</h3>
+            <section className="border border-white/[0.08] rounded-md p-6">
+              <SectionTitle>Postmortem</SectionTitle>
 
-              {/* Impact */}
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-400 mb-1">Impact</h4>
-                <p className="text-gray-200 text-sm">{r.postmortem.impact}</p>
-              </div>
+              {r.postmortem.impact && (
+                <div className="mb-6">
+                  <h4 className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">Impact</h4>
+                  <p className="text-sm text-white/80">{r.postmortem.impact}</p>
+                </div>
+              )}
 
-              {/* Timeline */}
               {r.postmortem.timeline.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Timeline</h4>
-                  <div className="relative pl-4 border-l-2 border-gray-800 space-y-3">
+                  <h4 className="text-xs font-medium text-[#888] uppercase tracking-wider mb-3">Timeline</h4>
+                  <div className="relative pl-4 border-l border-white/[0.08] space-y-3">
                     {r.postmortem.timeline.map((entry, i) => (
                       <div key={i} className="relative">
-                        <div className="absolute -left-[calc(0.25rem+5px)] top-1.5 h-2 w-2 rounded-full bg-gray-600" />
-                        <p className="text-xs text-gray-500 font-mono mb-0.5">
+                        <div className="absolute -left-[calc(0.25rem+3px)] top-1.5 h-1.5 w-1.5 rounded-full bg-[#555]" />
+                        <p className="text-xs text-[#555] font-mono mb-0.5">
                           {formatTimestamp(entry.timestamp)}
                         </p>
-                        <p className="text-sm text-gray-300">{entry.event}</p>
+                        <p className="text-sm text-white/70">{entry.event}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Action Items */}
               {r.postmortem.action_items.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">Action Items</h4>
-                  <ul className="space-y-1.5">
+                  <h4 className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">Action Items</h4>
+                  <ul className="space-y-2">
                     {r.postmortem.action_items.map((item, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm text-gray-300"
-                      >
-                        <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-gray-600" />
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-white/70">
+                        <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/[0.15]" />
                         {item}
                       </li>
                     ))}
@@ -269,59 +247,51 @@ export default function IncidentDetail() {
           )}
         </div>
       )}
-    </Shell>
+    </Page>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Page({ children }: { children: React.ReactNode }) {
+  return <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>;
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-sm font-semibold uppercase tracking-wider text-[#888] mb-4">{children}</h3>;
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <header className="border-b border-gray-800 px-6 py-5">
-        <div className="mx-auto max-w-6xl flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm font-bold">
-            K
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">Klarsicht</h1>
-          <span className="text-sm text-gray-500 ml-1">RCA Dashboard</span>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
-    </div>
+    <span className="font-mono text-xs bg-white/[0.05] border border-white/[0.08] rounded px-1.5 py-0.5 text-[#888]">
+      {children}
+    </span>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const isCompleted = status === "completed";
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isCompleted
-          ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-          : "bg-amber-950 text-amber-400 border border-amber-800"
-      }`}
-    >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isCompleted ? "bg-emerald-400" : "bg-amber-400 animate-pulse"
-        }`}
-      />
-      {isCompleted ? "Completed" : "Investigating"}
+    <span className="inline-flex items-center gap-1.5 text-xs">
+      <span className={`h-1.5 w-1.5 rounded-full ${isCompleted ? "bg-[#22c55e]" : "bg-amber-400 animate-pulse"}`} />
+      <span className={isCompleted ? "text-[#22c55e]" : "text-amber-400"}>
+        {isCompleted ? "Resolved" : "Investigating"}
+      </span>
     </span>
   );
 }
 
 function CategoryTag({ category }: { category: string }) {
-  const colors: Record<string, string> = {
-    misconfiguration: "bg-violet-950 text-violet-400 border-violet-800",
-    oom: "bg-red-950 text-red-400 border-red-800",
-    crash: "bg-orange-950 text-orange-400 border-orange-800",
-    networking: "bg-blue-950 text-blue-400 border-blue-800",
-    scaling: "bg-cyan-950 text-cyan-400 border-cyan-800",
-  };
-  const cls = colors[category.toLowerCase()] ?? "bg-gray-800 text-gray-400 border-gray-700";
   return (
-    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+    <span className="rounded border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-xs text-[#888]">
       {category}
     </span>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="animate-spin h-4 w-4 text-[#888]" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }

@@ -1,8 +1,10 @@
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -113,6 +115,64 @@ async def receive_alert(
         "incidents": incident_ids,
         "alerts_received": len(payload.alerts),
         "alerts_firing": len(incident_ids),
+    }
+
+
+@app.post("/test")
+async def send_test_alert(request: Request):
+    """Send a mock CrashLoopBackOff alert through the full pipeline."""
+    now = datetime.now(timezone.utc).isoformat()
+    mock_payload = GrafanaWebhookPayload(
+        receiver="klarsicht-test",
+        status="firing",
+        alerts=[
+            Alert(
+                status="firing",
+                labels={
+                    "alertname": "CrashLoopBackOff",
+                    "namespace": "demo",
+                    "pod": "nginx-6557b59c94-bf4t8",
+                    "severity": "critical",
+                },
+                annotations={
+                    "summary": "Test alert — pod is crash looping",
+                    "description": "This is a test alert sent from the Klarsicht setup page.",
+                },
+                startsAt=datetime.now(timezone.utc),
+                fingerprint="test-" + uuid4().hex[:8],
+            )
+        ],
+        groupLabels={"alertname": "CrashLoopBackOff"},
+        commonLabels={"namespace": "demo", "severity": "critical"},
+        commonAnnotations={"summary": "Test alert — pod is crash looping"},
+    )
+
+    incident_ids = []
+    for alert in mock_payload.alerts:
+        incident_id = uuid4()
+        incident_ids.append(str(incident_id))
+
+        logger.info("Test alert — incident %s", incident_id)
+
+        if _use_db:
+            from app.db import create_incident
+            await create_incident(
+                incident_id,
+                alert.labels.get("alertname", "unknown"),
+                alert.labels.get("namespace", "unknown"),
+                alert.labels.get("pod", "unknown"),
+                alert.startsAt,
+            )
+        else:
+            _memory_store[str(incident_id)] = None
+
+        asyncio.create_task(_run_and_store(incident_id, alert))
+
+    return {
+        "status": "accepted",
+        "incidents": incident_ids,
+        "alerts_received": 1,
+        "alerts_firing": 1,
     }
 
 
