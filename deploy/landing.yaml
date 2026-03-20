@@ -50,27 +50,3 @@ spec:
       name: http
   selector:
     app.kubernetes.io/name: klarsicht-landing
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: klarsicht-landing
-  labels:
-    app.kubernetes.io/name: klarsicht-landing
-spec:
-  ingressClassName: haproxy
-  tls:
-    - hosts:
-        - www.klarsicht.ch
-      secretName: klarsicht-ch-tls
-  rules:
-    - host: www.klarsicht.ch
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: klarsicht-landing
-                port:
-                  name: http

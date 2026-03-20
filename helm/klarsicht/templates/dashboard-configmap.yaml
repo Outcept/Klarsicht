@@ -24,6 +24,13 @@ data:
             proxy_read_timeout 300s;
         }
 
+        # Landing page
+        location /landingpage {
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
         # React SPA client-side routing
         location / {
             try_files $uri $uri/ /index.html;
