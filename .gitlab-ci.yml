@@ -6,6 +6,7 @@ stages:
 variables:
   AGENT_IMAGE: ${CI_REGISTRY_IMAGE}/agent
   DASHBOARD_IMAGE: ${CI_REGISTRY_IMAGE}/dashboard
+  LANDING_IMAGE: ${CI_REGISTRY_IMAGE}/landing
 
 # --- Test ---
 
@@ -55,6 +56,23 @@ build-dashboard:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+build-landing:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile.landing"
+      --destination "${LANDING_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${LANDING_IMAGE}:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 # --- Deploy ---
 # Requires CI/CD variables:
 #   KLARSICHT_LLM_API_KEY    - Anthropic API key
@@ -86,6 +104,8 @@ deploy:
       --set agent.llmApiKey=${KLARSICHT_LLM_API_KEY}
       --set grafana.webhookSecret=${KLARSICHT_WEBHOOK_SECRET:-""}
       --wait --timeout 5m
+    - kubectl -n klarsicht apply -f deploy/landing.yaml
+    - kubectl -n klarsicht set image deployment/klarsicht-landing landing=${LANDING_IMAGE}:${CI_COMMIT_SHORT_SHA}
   environment:
     name: production
     kubernetes:
