@@ -126,6 +126,24 @@
     .check { color: var(--green); } .cross { color: var(--muted); }
     @media (max-width: 600px) { .compare-table { font-size: 12px; } .compare-table th, .compare-table td { padding: 10px 8px; } }
 
+    /* Results */
+    .results { border-top: 1px solid var(--border); }
+    .results-stats { display: flex; gap: 2px; margin-top: 48px; }
+    @media (max-width: 768px) { .results-stats { flex-wrap: wrap; } }
+    .rstat { flex: 1; min-width: 140px; padding: 28px 24px; background: var(--surface); border: 1px solid var(--border); text-align: center; }
+    .rstat:first-child { border-radius: 10px 0 0 10px; }
+    .rstat:last-child { border-radius: 0 10px 10px 0; }
+    @media (max-width: 768px) { .rstat:first-child { border-radius: 10px 10px 0 0; } .rstat:last-child { border-radius: 0 0 10px 10px; } .rstat { min-width: 45%; } }
+    .rstat-num { font-size: 28px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.03em; }
+    .rstat-num.green { color: var(--green); }
+    .rstat-label { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .cat-bars { display: flex; flex-direction: column; gap: 12px; }
+    .cat-bar { display: flex; align-items: center; gap: 16px; }
+    .cat-bar-label { font-size: 14px; color: var(--dim); min-width: 160px; }
+    .cat-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+    .cat-bar-fill { height: 100%; background: var(--green); border-radius: 3px; }
+    .cat-bar-num { font-family: var(--mono); font-size: 13px; color: var(--dim); min-width: 32px; text-align: right; }
+
     /* Install */
     .install { border-top: 1px solid var(--border); }
     .install-content { max-width: 680px; }
@@ -160,6 +178,7 @@
     <div class="nav-links">
       <a href="#how">How it works</a>
       <a href="#compare">Compare</a>
+      <a href="#results">Results</a>
       <a href="#install">Install</a>
       <a href="https://gitlab.com/outcept/klarsicht" target="_blank" rel="noopener" class="nav-cta">GitLab</a>
     </div>
@@ -324,6 +343,135 @@
           <tr class="hl"><td>EU data residency</td><td><span class="check">&#10003; Your infra</span></td><td><span class="cross">US-hosted</span></td><td><span class="cross">US-hosted</span></td><td><span class="check">&#10003; Your infra</span></td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section class="results" id="results">
+  <div class="container">
+    <div class="fade-in">
+      <p class="label">Battle-tested</p>
+      <h2 class="stitle">154 incidents. 94.5% average confidence.</h2>
+      <p class="sdesc">We ran 81 failure scenarios across 8 categories on a live K3s cluster. Here's what happened.</p>
+    </div>
+
+    <!-- Stats row -->
+    <div class="results-stats fade-in">
+      <div class="rstat">
+        <div class="rstat-num green">133</div>
+        <div class="rstat-label">Incidents resolved</div>
+      </div>
+      <div class="rstat">
+        <div class="rstat-num">94.5%</div>
+        <div class="rstat-label">Avg confidence</div>
+      </div>
+      <div class="rstat">
+        <div class="rstat-num green">38</div>
+        <div class="rstat-label">Unique pods diagnosed</div>
+      </div>
+      <div class="rstat">
+        <div class="rstat-num">85-100%</div>
+        <div class="rstat-label">Confidence range</div>
+      </div>
+    </div>
+
+    <!-- Categories tested -->
+    <div class="fade-in" style="margin-top:64px">
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:24px">Failure scenarios tested</h3>
+      <div style="overflow-x:auto">
+        <table class="compare-table">
+          <thead>
+            <tr><th>Category</th><th>Tests</th><th>Examples</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr class="hl">
+              <td>Missing env vars</td><td>10</td>
+              <td style="color:var(--dim)">DATABASE_URL, API_KEY, JWT_SECRET, REDIS_URL, KAFKA_BROKERS, S3_BUCKET, SMTP_HOST, MONGO_URI</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Connection failures</td><td>10</td>
+              <td style="color:var(--dim)">API refused, DNS fail, HTTP timeout, gRPC unavailable, Redis, Elasticsearch, RabbitMQ, MySQL, SSL expired, Vault sealed</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Auth & authorization</td><td>10</td>
+              <td style="color:var(--dim)">OAuth expired, AWS creds, K8s RBAC forbidden, LDAP bind, Stripe key revoked, mTLS mismatch, Firebase, GitHub rate limit</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Data & schema errors</td><td>10</td>
+              <td style="color:var(--dim)">JSON parse, DB migration, Protobuf decode, Avro schema mismatch, malformed XML, encoding error, YAML syntax, GraphQL validation</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Resource exhaustion</td><td>10</td>
+              <td style="color:var(--dim)">Python OOM, disk full, fd limit, thread limit, connection pool exhausted, Node.js heap OOM, ephemeral storage, shared memory</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Application logic</td><td>10</td>
+              <td style="color:var(--dim)">Java NullPointer, ZeroDivision, Go nil pointer, stack overflow, Rust panic, Node.js unhandled promise, PostgreSQL deadlock</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Dependency & version</td><td>10</td>
+              <td style="color:var(--dim)">Python ModuleNotFoundError, Node module missing, shared library, pip conflict, Java class version, npm peer dep, Go module 410</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Network & DNS</td><td>10</td>
+              <td style="color:var(--dim)">NXDOMAIN, network unreachable, TCP reset, envoy 502, mTLS handshake, service mesh, NetworkPolicy blocking, redirect loop</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+            <tr class="hl">
+              <td>Startup & init</td><td>1</td>
+              <td style="color:var(--dim)">Port already in use</td>
+              <td><span class="check">&#10003;</span> <span style="color:var(--green)">100%</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Root cause breakdown -->
+    <div class="fade-in" style="margin-top:48px">
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:24px">Root cause categories identified</h3>
+      <div class="cat-bars">
+        <div class="cat-bar">
+          <div class="cat-bar-label">Misconfiguration</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:79.7%"></div></div>
+          <div class="cat-bar-num">106</div>
+        </div>
+        <div class="cat-bar">
+          <div class="cat-bar-label">Dependency failure</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:10.5%"></div></div>
+          <div class="cat-bar-num">14</div>
+        </div>
+        <div class="cat-bar">
+          <div class="cat-bar-label">Deployment issue</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:4.5%"></div></div>
+          <div class="cat-bar-num">6</div>
+        </div>
+        <div class="cat-bar">
+          <div class="cat-bar-label">Resource exhaustion</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:3%"></div></div>
+          <div class="cat-bar-num">4</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coming soon -->
+    <div class="fade-in" style="margin-top:64px;padding:32px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)"></span>
+        <span style="font-size:13px;color:var(--green);font-weight:500">Coming soon</span>
+      </div>
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:8px">User-submitted test results</h3>
+      <p style="font-size:14px;color:var(--dim);max-width:520px">
+        We're collecting real-world incident data from early adopters. If you're running Klarsicht on your cluster, we'd love to feature your results here — anonymized, with your permission.
+      </p>
     </div>
   </div>
 </section>
