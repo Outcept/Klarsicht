@@ -18,9 +18,9 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # Landing page static assets (css, js, fonts, favicon)
-        location ~* ^/(?:favicon\.svg|css/|js/|fonts/) {
-            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80;
+        # Landing page favicon
+        location = /favicon.svg {
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/favicon.svg;
             proxy_set_header Host $host;
         }
 
