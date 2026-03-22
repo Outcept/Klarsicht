@@ -30,7 +30,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 700px) {
   .site-nav .burger { display: block; }
   .site-nav .links {
-    display: none; position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
+    display: none; position: fixed; top: 50px; left: 0; right: 0; height: 100vh;
     flex-direction: column; gap: 0;
     background: #000;
     padding: 12px 24px; z-index: 99;
