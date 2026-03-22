@@ -1,4 +1,4 @@
-baseURL: https://klarsicht.vibebros.net/site/
+baseURL: https://klarsicht.dev/
 languageCode: en
 title: Klarsicht
 theme: klarsicht
@@ -16,7 +16,7 @@ menu:
       url: /blog/
       weight: 2
     - name: Dashboard
-      url: https://klarsicht.vibebros.net/
+      url: /app/
       weight: 3
 
 markup:

@@ -29,11 +29,13 @@ dashboard:
   ingress:
     enabled: true
     className: haproxy
-    host: klarsicht.vibebros.net
+    host: klarsicht.dev
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
     tls:
       - hosts:
-          - klarsicht.vibebros.net
-        secretName: vibebros-net-tls
+          - klarsicht.dev
+        secretName: klarsicht-dev-tls
 
 postgres:
   enabled: true

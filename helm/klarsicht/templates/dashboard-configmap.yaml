@@ -11,10 +11,20 @@ data:
         listen 80;
         server_name _;
 
-        root /usr/share/nginx/html;
-        index index.html;
+        # Landing page at root
+        location = / {
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
 
-        # API reverse proxy to agent service (strip /api prefix)
+        # Landing page static assets (css, js, fonts, favicon)
+        location ~* ^/(?:favicon\.svg|css/|js/|fonts/) {
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80;
+            proxy_set_header Host $host;
+        }
+
+        # API reverse proxy
         location /api/ {
             proxy_pass http://{{ include "klarsicht.fullname" . }}-agent.{{ .Release.Namespace }}.svc:8000/;
             proxy_set_header Host $host;
@@ -24,26 +34,32 @@ data:
             proxy_read_timeout 300s;
         }
 
-        # Landing page
-        location /landingpage {
-            proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/;
+        # Dashboard app under /app/
+        location /app/ {
+            alias /usr/share/nginx/html/;
+            try_files $uri $uri/ /app/index.html;
+        }
+
+        # Docs & Blog (Hugo)
+        location /docs/ {
+            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/docs/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # Docs & Blog (Hugo site) — keep /site/ prefix
-        location /site/ {
-            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/site/;
+        location /blog/ {
+            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/blog/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # React SPA client-side routing
-        location / {
-            try_files $uri $uri/ /index.html;
+        # Hugo static assets (css)
+        location /css/ {
+            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/css/;
+            proxy_set_header Host $host;
         }
 
-        # Health check endpoint
+        # Health check
         location /nginx-health {
             access_log off;
             return 200 "ok";
