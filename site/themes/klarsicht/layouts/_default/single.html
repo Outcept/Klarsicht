@@ -1,0 +1,20 @@
+{{ define "main" }}
+<div class="page-wrap">
+  <div class="content-wrap">
+    <article class="article">
+      <header class="article-header">
+        <div class="meta">
+          <span>{{ .Date.Format "Jan 2, 2006" }}</span>
+          {{ with .Params.author }}<span>{{ . }}</span>{{ end }}
+          {{ with .Params.readtime }}<span>{{ . }} min read</span>{{ end }}
+        </div>
+        <h1>{{ .Title }}</h1>
+        {{ with .Description }}<p class="lead">{{ . }}</p>{{ end }}
+      </header>
+      <div class="prose">
+        {{ .Content }}
+      </div>
+    </article>
+  </div>
+</div>
+{{ end }}

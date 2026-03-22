@@ -31,6 +31,13 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
         }
 
+        # Docs & Blog (Hugo site)
+        location /site/ {
+            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
         # React SPA client-side routing
         location / {
             try_files $uri $uri/ /index.html;

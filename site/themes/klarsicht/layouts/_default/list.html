@@ -1,0 +1,21 @@
+{{ define "main" }}
+<div class="page-wrap">
+  <div class="content-wrap">
+    <div class="blog-list">
+      <h1>{{ .Title }}</h1>
+      {{ with .Description }}<p class="sub">{{ . }}</p>{{ end }}
+      {{ range .Pages.ByDate.Reverse }}
+      <a href="{{ .Permalink }}" class="blog-card">
+        <div class="blog-meta">
+          <span>{{ .Date.Format "Jan 2, 2006" }}</span>
+          {{ with .Params.author }}<span>{{ . }}</span>{{ end }}
+          {{ with .Params.readtime }}<span>{{ . }} min read</span>{{ end }}
+        </div>
+        <div class="blog-title">{{ .Title }}</div>
+        {{ with .Description }}<div class="blog-excerpt">{{ . }}</div>{{ end }}
+      </a>
+      {{ end }}
+    </div>
+  </div>
+</div>
+{{ end }}

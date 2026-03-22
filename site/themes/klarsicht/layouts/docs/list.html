@@ -1,0 +1,39 @@
+{{ define "main" }}
+<div class="page-wrap">
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">Getting Started</div>
+      {{ range (where .Site.RegularPages "Section" "docs") }}
+        {{ if (in .File.Path "getting-started") }}
+        <a href="{{ .Permalink }}"{{ if eq $.RelPermalink .RelPermalink }} class="active"{{ end }}>{{ .Title }}</a>
+        {{ end }}
+      {{ end }}
+      <div class="sidebar-section">Architecture</div>
+      {{ range (where .Site.RegularPages "Section" "docs") }}
+        {{ if (in .File.Path "architecture") }}
+        <a href="{{ .Permalink }}"{{ if eq $.RelPermalink .RelPermalink }} class="active"{{ end }}>{{ .Title }}</a>
+        {{ end }}
+      {{ end }}
+      <div class="sidebar-section">Integrations</div>
+      {{ range (where .Site.RegularPages "Section" "docs") }}
+        {{ if (in .File.Path "integrations") }}
+        <a href="{{ .Permalink }}"{{ if eq $.RelPermalink .RelPermalink }} class="active"{{ end }}>{{ .Title }}</a>
+        {{ end }}
+      {{ end }}
+      <div class="sidebar-section">Configuration</div>
+      {{ range (where .Site.RegularPages "Section" "docs") }}
+        {{ if (in .File.Path "configuration") }}
+        <a href="{{ .Permalink }}"{{ if eq $.RelPermalink .RelPermalink }} class="active"{{ end }}>{{ .Title }}</a>
+        {{ end }}
+      {{ end }}
+    </aside>
+    <div>
+      <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.03em;margin-bottom:8px">Documentation</h1>
+      <p style="color:var(--dim);font-size:15px;margin-bottom:48px">{{ .Site.Params.description }}</p>
+      <div class="prose">
+        {{ .Content }}
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}

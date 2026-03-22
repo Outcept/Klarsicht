@@ -7,6 +7,7 @@ variables:
   AGENT_IMAGE: ${CI_REGISTRY_IMAGE}/agent
   DASHBOARD_IMAGE: ${CI_REGISTRY_IMAGE}/dashboard
   LANDING_IMAGE: ${CI_REGISTRY_IMAGE}/landing
+  SITE_IMAGE: ${CI_REGISTRY_IMAGE}/site
 
 # --- Test ---
 
@@ -73,6 +74,23 @@ build-landing:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+build-site:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile.site"
+      --destination "${SITE_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${SITE_IMAGE}:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 # --- Deploy ---
 # Requires CI/CD variables:
 #   KLARSICHT_LLM_API_KEY    - Anthropic API key
@@ -95,8 +113,9 @@ deploy:
       --docker-password=${CI_REGISTRY_PASSWORD}
       --dry-run=client -o yaml | kubectl apply -f -
   script:
-    - kubectl -n klarsicht apply -f deploy/landing.yaml
+    - kubectl -n klarsicht apply -f deploy/landing.yaml -f deploy/site.yaml
     - kubectl -n klarsicht set image deployment/klarsicht-landing landing=${LANDING_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - kubectl -n klarsicht set image deployment/klarsicht-site site=${SITE_IMAGE}:${CI_COMMIT_SHORT_SHA}
     - >-
       helm upgrade --install klarsicht helm/klarsicht/
       -f helm/values-vibebros.yaml

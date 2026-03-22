@@ -1,0 +1,26 @@
+baseURL: https://klarsicht.vibebros.net/site
+languageCode: en
+title: Klarsicht
+theme: klarsicht
+
+params:
+  description: AI-Powered Root Cause Analysis for Kubernetes
+  tagline: Self-hosted. FINMA-ready. Your data stays yours.
+
+menu:
+  main:
+    - name: Docs
+      url: /site/docs/
+      weight: 1
+    - name: Blog
+      url: /site/blog/
+      weight: 2
+
+markup:
+  highlight:
+    style: monokai
+    lineNos: false
+    noClasses: true
+  goldmark:
+    renderer:
+      unsafe: true

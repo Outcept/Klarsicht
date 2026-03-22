@@ -8,3 +8,5 @@ __pycache__/
 # Dashboard
 dashboard/node_modules/
 dashboard/dist/
+site/public/
+site/.hugo_build.lock
