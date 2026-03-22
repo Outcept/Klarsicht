@@ -32,7 +32,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   .site-nav .links {
     display: none; position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
     flex-direction: column; gap: 0;
-    background: rgba(0,0,0,0.97); backdrop-filter: blur(16px);
+    background: #000;
     padding: 12px 24px; z-index: 99;
   }
   .site-nav .links.open { display: flex; }
