@@ -31,6 +31,14 @@ spec:
           env:
             - name: KLARSICHT_LLM_PROVIDER
               value: {{ .Values.agent.llmProvider | quote }}
+            {{- if .Values.agent.llmModel }}
+            - name: KLARSICHT_LLM_MODEL
+              value: {{ .Values.agent.llmModel | quote }}
+            {{- end }}
+            {{- if .Values.agent.llmBaseUrl }}
+            - name: KLARSICHT_LLM_BASE_URL
+              value: {{ .Values.agent.llmBaseUrl | quote }}
+            {{- end }}
             - name: KLARSICHT_LLM_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -62,6 +62,34 @@ curl -X POST http://klarsicht-agent.klarsicht.svc:8000/test
 - **Agent Mode** — LLM runs externally (Anthropic, OpenAI). Only investigation context leaves the cluster.
 - **On-Prem Mode** — LLM runs in-cluster (Ollama, vLLM). Zero external calls. Air-gap ready.
 
+## Supported LLM Providers
+
+```bash
+# Anthropic Claude (default)
+helm install klarsicht ... \
+  --set agent.llmProvider=anthropic \
+  --set agent.llmApiKey=sk-ant-...
+
+# OpenAI
+helm install klarsicht ... \
+  --set agent.llmProvider=openai \
+  --set agent.llmApiKey=sk-... \
+  --set agent.llmModel=gpt-4o
+
+# Ollama (local, air-gapped)
+helm install klarsicht ... \
+  --set agent.llmProvider=ollama \
+  --set agent.llmModel=llama3.1 \
+  --set agent.llmBaseUrl=http://ollama.default.svc:11434/v1
+
+# Any OpenAI-compatible API
+helm install klarsicht ... \
+  --set agent.llmProvider=openai \
+  --set agent.llmBaseUrl=https://your-vllm-server/v1 \
+  --set agent.llmApiKey=your-key \
+  --set agent.llmModel=your-model
+```
+
 ## What it inspects
 
 | Tool | Data |

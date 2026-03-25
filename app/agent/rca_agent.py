@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 
@@ -20,16 +20,56 @@ from app.models.rca import FixStep, Postmortem, RCAResult, RootCause, TimelineEn
 
 logger = logging.getLogger(__name__)
 
+# Default models per provider
+_DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-20250514",
+    "openai": "gpt-4o",
+    "ollama": "llama3.1",
+}
+
+
+def _build_llm() -> BaseChatModel:
+    """Build the LLM client based on the configured provider."""
+    provider = settings.llm_provider.lower()
+    model = settings.llm_model or _DEFAULT_MODELS.get(provider, "")
+
+    if provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(
+            model=model,
+            api_key=settings.llm_api_key,
+            max_tokens=4096,
+            temperature=0,
+        )
+
+    if provider == "openai":
+        from langchain_openai import ChatOpenAI
+        kwargs = {"model": model, "temperature": 0, "max_tokens": 4096}
+        if settings.llm_api_key:
+            kwargs["api_key"] = settings.llm_api_key
+        if settings.llm_base_url:
+            kwargs["base_url"] = settings.llm_base_url
+        return ChatOpenAI(**kwargs)
+
+    if provider == "ollama":
+        from langchain_openai import ChatOpenAI
+        base_url = settings.llm_base_url or "http://ollama.default.svc:11434/v1"
+        return ChatOpenAI(
+            model=model,
+            base_url=base_url,
+            api_key="ollama",  # ollama doesn't need a real key
+            temperature=0,
+            max_tokens=4096,
+        )
+
+    raise ValueError(f"Unknown LLM provider: {provider}. Use: anthropic, openai, ollama")
+
 
 def _build_agent():
-    llm = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
-        api_key=settings.llm_api_key,
-        max_tokens=4096,
-        temperature=0,
-    )
+    llm = _build_llm()
     tools = get_tools()
     prompt = SYSTEM_PROMPT if settings.mimir_endpoint else SYSTEM_PROMPT_NO_METRICS
+    logger.info("Agent using %s (model: %s)", settings.llm_provider, settings.llm_model or "default")
     return create_react_agent(llm, tools, prompt=prompt)
 
 

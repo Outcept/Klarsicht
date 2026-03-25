@@ -9,8 +9,10 @@ agent:
   replicas: 1
   watchNamespaces: []        # empty = all namespaces
   metricsEndpoint: ""        # Prometheus: http://prometheus:9090, Mimir: http://mimir:9009/prometheus
-  llmProvider: anthropic     # or openai
-  llmApiKey: ""              # from secret ref
+  llmProvider: anthropic     # anthropic, openai, ollama
+  llmModel: ""               # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3.1)
+  llmApiKey: ""              # from secret ref (not needed for ollama)
+  llmBaseUrl: ""             # only for ollama/custom: http://ollama.default.svc:11434/v1
   resources:
     requests:
       cpu: 100m
