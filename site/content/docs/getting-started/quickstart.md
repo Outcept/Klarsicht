@@ -15,7 +15,7 @@ Get Klarsicht running in your cluster in under 5 minutes.
 ## 1. Install with Helm
 
 ```bash
-helm install klarsicht oci://registry.gitlab.com/outcept/klarsicht/helm/klarsicht \
+helm install klarsicht oci://ghcr.io/outcept/klarsicht/helm/klarsicht \
   --namespace klarsicht --create-namespace \
   --set agent.llmApiKey=<your-api-key> \
   --set agent.metricsEndpoint=http://prometheus.monitoring.svc:9090
@@ -48,7 +48,7 @@ Send a test alert to verify the pipeline:
 curl -X POST http://klarsicht-agent.klarsicht.svc:8000/test
 
 # Option B: Deploy a pod that actually crashes
-kubectl apply -f https://gitlab.com/outcept/klarsicht/-/raw/main/examples/test-crashloop.yaml
+kubectl apply -f https://raw.githubusercontent.com/outcept/Klarsicht/main/examples/test-crashloop.yaml
 ```
 
 The investigation result will appear in the dashboard within 60 seconds.
@@ -56,7 +56,7 @@ The investigation result will appear in the dashboard within 60 seconds.
 ## 4. Clean up test
 
 ```bash
-kubectl delete -f https://gitlab.com/outcept/klarsicht/-/raw/main/examples/test-crashloop.yaml
+kubectl delete -f https://raw.githubusercontent.com/outcept/Klarsicht/main/examples/test-crashloop.yaml
 ```
 
 ## What's next

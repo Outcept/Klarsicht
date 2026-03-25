@@ -787,7 +787,7 @@
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           <code><span class="cmt"># Install Klarsicht into your cluster</span>
-helm install klarsicht oci://registry.gitlab.com/outcept/klarsicht/helm/klarsicht \
+helm install klarsicht oci://ghcr.io/outcept/klarsicht/helm/klarsicht \
   <span class="f">--namespace</span> klarsicht <span class="f">--create-namespace</span> \
   <span class="f">--set</span> agent.llmApiKey=<span class="s">&lt;your-anthropic-api-key&gt;</span> \
   <span class="f">--set</span> agent.metricsEndpoint=<span class="s">http://prometheus.monitoring.svc:9090</span></code>
@@ -806,7 +806,7 @@ http://klarsicht-agent.klarsicht.svc:8000/alert</code>
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           <code><span class="cmt"># Deploy a pod that intentionally crashes (missing env var)</span>
-kubectl apply -f https://gitlab.com/outcept/klarsicht/-/raw/main/examples/test-crashloop.yaml
+kubectl apply -f https://raw.githubusercontent.com/outcept/Klarsicht/main/examples/test-crashloop.yaml
 
 <span class="cmt"># Or send a mock alert directly</span>
 curl -X POST http://klarsicht-agent.klarsicht.svc:8000/test</code>
@@ -827,9 +827,9 @@ curl -X POST http://klarsicht-agent.klarsicht.svc:8000/test</code>
       <div class="footer-links">
         <a href="/docs/">Docs</a>
         <a href="/blog/">Blog</a>
-        <a href="https://gitlab.com/outcept/klarsicht" target="_blank" rel="noopener">GitLab</a>
-        <a href="https://gitlab.com/outcept/klarsicht/-/blob/main/README.md" target="_blank" rel="noopener">Docs</a>
-        <a href="https://gitlab.com/outcept/klarsicht/-/issues" target="_blank" rel="noopener">Issues</a>
+        <a href="https://github.com/outcept/Klarsicht" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/outcept/Klarsicht" target="_blank" rel="noopener">Docs</a>
+        <a href="https://github.com/outcept/Klarsicht/issues" target="_blank" rel="noopener">Issues</a>
       </div>
     </div>
   </div>

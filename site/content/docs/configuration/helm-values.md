@@ -10,7 +10,7 @@ All configuration is done via Helm values. Here's the complete reference.
 ```yaml
 agent:
   image:
-    repository: registry.gitlab.com/outcept/klarsicht/agent
+    repository: ghcr.io/outcept/klarsicht/agent
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -41,7 +41,7 @@ agent:
 ```yaml
 dashboard:
   image:
-    repository: registry.gitlab.com/outcept/klarsicht/dashboard
+    repository: ghcr.io/outcept/klarsicht/dashboard
     tag: latest
   replicas: 1
   ingress:

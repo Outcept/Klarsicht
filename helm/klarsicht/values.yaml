@@ -3,7 +3,7 @@ imagePullSecrets: []
 
 agent:
   image:
-    repository: ghcr.io/tzambellis/klarsicht/agent
+    repository: ghcr.io/outcept/klarsicht/agent
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
@@ -23,7 +23,7 @@ agent:
 
 dashboard:
   image:
-    repository: ghcr.io/tzambellis/klarsicht/dashboard
+    repository: ghcr.io/outcept/klarsicht/dashboard
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1

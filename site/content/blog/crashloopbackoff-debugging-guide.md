@@ -144,7 +144,7 @@ We tested this across 154 incidents covering missing env vars, connection failur
 <div class="callout callout-tip">
 <strong>Try it yourself:</strong> Deploy our test scenario to see Klarsicht diagnose a CrashLoopBackOff in real time.
 
-<pre><code>kubectl apply -f https://gitlab.com/outcept/klarsicht/-/raw/main/examples/test-crashloop.yaml</code></pre>
+<pre><code>kubectl apply -f https://raw.githubusercontent.com/outcept/Klarsicht/main/examples/test-crashloop.yaml</code></pre>
 </div>
 
 ---
