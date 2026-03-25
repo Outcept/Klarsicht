@@ -3,7 +3,7 @@ imagePullSecrets: []
 
 agent:
   image:
-    repository: registry.gitlab.com/outcept/klarsicht/agent
+    repository: ghcr.io/tzambellis/klarsicht/agent
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
@@ -21,7 +21,7 @@ agent:
 
 dashboard:
   image:
-    repository: registry.gitlab.com/outcept/klarsicht/dashboard
+    repository: ghcr.io/tzambellis/klarsicht/dashboard
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
