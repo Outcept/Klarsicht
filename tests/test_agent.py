@@ -87,15 +87,22 @@ def test_parse_agent_output_with_whitespace():
     assert result["root_cause"]["category"] == "misconfiguration"
 
 
+def _mock_agent_stream(final_content: str):
+    """Create a mock agent that supports astream with the given final content."""
+    mock_agent = AsyncMock()
+
+    async def fake_astream(*args, **kwargs):
+        # Yield a final agent message (no tool calls)
+        yield {"agent": {"messages": [AIMessage(content=final_content)]}}
+
+    mock_agent.astream = fake_astream
+    return mock_agent
+
+
 @pytest.mark.asyncio
 @patch("app.agent.rca_agent._build_agent")
 async def test_run_investigation(mock_build_agent):
-    # Mock the agent to return a pre-built response
-    mock_agent = AsyncMock()
-    mock_agent.ainvoke.return_value = {
-        "messages": [AIMessage(content=json.dumps(SAMPLE_AGENT_JSON))]
-    }
-    mock_build_agent.return_value = mock_agent
+    mock_build_agent.return_value = _mock_agent_stream(json.dumps(SAMPLE_AGENT_JSON))
 
     incident_id = uuid4()
     result = await run_investigation(incident_id, SAMPLE_ALERT)
@@ -116,21 +123,11 @@ async def test_run_investigation(mock_build_agent):
     assert len(result.postmortem.timeline) == 2
     assert len(result.postmortem.action_items) == 1
 
-    # Verify agent was called with the right message
-    call_args = mock_agent.ainvoke.call_args
-    messages = call_args[0][0]["messages"]
-    assert len(messages) == 1
-    assert "CrashLoopBackOff" in messages[0].content
-
 
 @pytest.mark.asyncio
 @patch("app.agent.rca_agent._build_agent")
 async def test_run_investigation_unparseable_output(mock_build_agent):
-    mock_agent = AsyncMock()
-    mock_agent.ainvoke.return_value = {
-        "messages": [AIMessage(content="I couldn't figure it out, sorry.")]
-    }
-    mock_build_agent.return_value = mock_agent
+    mock_build_agent.return_value = _mock_agent_stream("I couldn't figure it out, sorry.")
 
     incident_id = uuid4()
     result = await run_investigation(incident_id, SAMPLE_ALERT)

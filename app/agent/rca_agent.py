@@ -162,30 +162,71 @@ def _build_rca_result(
 
 
 async def run_investigation(incident_id: UUID, alert: Alert) -> RCAResult:
-    """Run the full RCA investigation for a single alert.
+    """Run the full RCA investigation for a single alert."""
+    from app.steps import get_progress
 
-    Args:
-        incident_id: Unique ID for this incident.
-        alert: The parsed Grafana alert.
-
-    Returns:
-        RCAResult with root cause, fix steps, and postmortem.
-    """
+    progress = get_progress(str(incident_id))
     logger.info("Starting investigation for incident %s", incident_id)
+
+    progress.add_step("Alert received", f"{alert.labels.get('alertname', '?')} in {alert.labels.get('namespace', '?')}/{alert.labels.get('pod', '?')}")
 
     agent = _build_agent()
     message = _build_investigation_message(alert)
 
-    result = await agent.ainvoke({"messages": [HumanMessage(content=message)]})
+    progress.add_step("Agent initialized", f"Provider: {settings.llm_provider}, tools: {len(get_tools())}")
 
-    # The final message from the agent contains the RCA JSON
-    final_message = result["messages"][-1]
-    raw_output = final_message.content
+    # Stream agent execution to capture tool calls
+    progress.add_step("Starting investigation", "ReAct agent running...")
+
+    last_tool = ""
+    final_state = None
+    async for event in agent.astream(
+        {"messages": [HumanMessage(content=message)]},
+        stream_mode="updates",
+    ):
+        # Each event is a dict with node name -> state update
+        for node_name, state_update in event.items():
+            if node_name == "tools":
+                # Tool execution completed
+                msgs = state_update.get("messages", [])
+                for msg in msgs:
+                    tool_name = getattr(msg, "name", "")
+                    content = str(getattr(msg, "content", ""))[:100]
+                    if tool_name:
+                        progress.add_step(f"{tool_name} completed", content, tool=tool_name, status="done")
+
+            elif node_name == "agent":
+                # Agent decided to call a tool or produce final output
+                msgs = state_update.get("messages", [])
+                for msg in msgs:
+                    tool_calls = getattr(msg, "tool_calls", [])
+                    for tc in tool_calls:
+                        tool_name = tc.get("name", "unknown")
+                        args = tc.get("args", {})
+                        input_summary = ", ".join(f"{k}={v}" for k, v in args.items())[:150] if isinstance(args, dict) else ""
+                        progress.add_step(f"Calling {tool_name}", input_summary, tool=tool_name)
+
+                    # If no tool calls, this is the final response
+                    if not tool_calls and hasattr(msg, "content") and msg.content:
+                        final_state = msg.content
+
+        # Keep track of final state from last event
+        if "agent" in event:
+            msgs = event["agent"].get("messages", [])
+            if msgs:
+                last_msg = msgs[-1]
+                if hasattr(last_msg, "content") and last_msg.content and not getattr(last_msg, "tool_calls", []):
+                    final_state = last_msg.content
+
+    raw_output = final_state or ""
+    progress.add_step("Parsing results", "Extracting RCA from agent output...")
 
     try:
         agent_output = _parse_agent_output(raw_output)
+        progress.add_step("RCA parsed", "Root cause analysis extracted successfully", status="done")
     except (json.JSONDecodeError, TypeError):
         logger.error("Failed to parse agent output: %s", raw_output[:500])
+        progress.add_step("Parse failed", "Could not extract JSON from agent output", status="error")
         agent_output = {
             "root_cause": {
                 "summary": "Agent produced non-parseable output",
@@ -198,10 +239,11 @@ async def run_investigation(incident_id: UUID, alert: Alert) -> RCAResult:
         }
 
     rca = _build_rca_result(incident_id, alert, agent_output)
-    logger.info(
-        "Investigation complete for incident %s — root cause: %s (confidence: %.0f%%)",
-        incident_id,
-        rca.root_cause.summary if rca.root_cause else "unknown",
-        (rca.root_cause.confidence * 100) if rca.root_cause else 0,
-    )
+
+    summary = rca.root_cause.summary if rca.root_cause else "unknown"
+    confidence = (rca.root_cause.confidence * 100) if rca.root_cause else 0
+    progress.add_step("Investigation complete", f"{summary} ({confidence:.0f}% confidence)", status="done")
+    progress.complete("completed")
+
+    logger.info("Investigation complete for incident %s — %s (%.0f%%)", incident_id, summary, confidence)
     return rca

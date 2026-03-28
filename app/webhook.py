@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import requests as http_requests
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ValidationError
 
 from app.agent.rca_agent import run_investigation
@@ -357,3 +358,38 @@ async def get_incident_endpoint(incident_id: str):
         "status": "completed" if result is not None else "investigating",
         "result": result.model_dump(mode="json") if result else None,
     }
+
+
+@app.get("/incidents/{incident_id}/steps")
+async def get_incident_steps(incident_id: str):
+    """Get the live investigation steps for an incident."""
+    from app.steps import get_progress
+    progress = get_progress(incident_id)
+    return progress.to_dict()
+
+
+@app.get("/incidents/{incident_id}/stream")
+async def stream_incident_steps(incident_id: str):
+    """SSE stream of investigation steps. Sends events as steps are added."""
+    from app.steps import get_progress
+
+    async def event_generator():
+        progress = get_progress(incident_id)
+        sent = 0
+        while True:
+            steps = progress.to_dict()
+            # Send any new steps
+            if len(steps["steps"]) > sent:
+                for step in steps["steps"][sent:]:
+                    yield f"data: {json.dumps(step)}\n\n"
+                sent = len(steps["steps"])
+
+            if progress.status in ("completed", "failed"):
+                yield f"data: {json.dumps({'event': 'done', 'status': progress.status})}\n\n"
+                break
+
+            await progress.wait_for_update(timeout=30)
+            # Send keepalive
+            yield ": keepalive\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

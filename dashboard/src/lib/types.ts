@@ -41,6 +41,19 @@ export interface IncidentEntry {
 
 export type IncidentsResponse = Record<string, IncidentEntry>;
 
+export interface InvestigationStep {
+  timestamp: number;
+  event: string;
+  detail: string;
+  tool: string;
+  status: "running" | "done" | "error";
+}
+
+export interface InvestigationProgress {
+  status: "investigating" | "completed" | "failed";
+  steps: InvestigationStep[];
+}
+
 export interface StatsRecentIncident {
   incident_id: string;
   alert_name: string;

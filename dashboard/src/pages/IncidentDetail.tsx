@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchIncident } from "../lib/api";
-import type { IncidentEntry } from "../lib/types";
+import { fetchIncident, fetchSteps } from "../lib/api";
+import type { IncidentEntry, InvestigationStep } from "../lib/types";
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -100,6 +100,8 @@ export default function IncidentDetail() {
   const [data, setData] = useState<IncidentEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [steps, setSteps] = useState<InvestigationStep[]>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -108,6 +110,29 @@ export default function IncidentDetail() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Poll for steps and auto-refresh when investigating
+  useEffect(() => {
+    if (!id || !data) return;
+    if (data.status !== "investigating") return;
+
+    const poll = async () => {
+      try {
+        const progress = await fetchSteps(id);
+        setSteps(progress.steps);
+        if (progress.status === "completed" || progress.status === "failed") {
+          // Investigation done — refresh the incident data
+          const updated = await fetchIncident(id);
+          setData(updated);
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      } catch { /* ignore */ }
+    };
+
+    poll(); // immediate first call
+    pollRef.current = setInterval(poll, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [id, data?.status]);
 
   if (loading) {
     return (
@@ -186,12 +211,35 @@ export default function IncidentDetail() {
       </div>
 
       {!r && !isCompleted && (
-        <div className="border border-white/[0.08] rounded-md px-6 py-12 text-center">
-          <div className="inline-flex items-center gap-2 text-amber-400 text-sm mb-2">
+        <div className="border border-white/[0.08] rounded-md p-6">
+          <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
             Investigation in progress
           </div>
-          <p className="text-xs text-[#888]">Results will appear here once the analysis is complete.</p>
+          {steps.length > 0 ? (
+            <div className="relative pl-4 border-l border-white/[0.08] space-y-3">
+              {steps.map((step, i) => (
+                <div key={i} className="relative">
+                  <div className={`absolute -left-[calc(0.25rem+3px)] top-1.5 h-1.5 w-1.5 rounded-full ${
+                    step.status === "done" ? "bg-[#22c55e]" :
+                    step.status === "error" ? "bg-red-500" :
+                    i === steps.length - 1 ? "bg-amber-400 animate-pulse" : "bg-[#555]"
+                  }`} />
+                  <p className={`text-sm font-medium ${
+                    step.status === "error" ? "text-red-400" :
+                    step.status === "done" ? "text-white/90" : "text-white"
+                  }`}>
+                    {step.event}
+                  </p>
+                  {step.detail && (
+                    <p className="text-xs text-[#555] font-mono mt-0.5 truncate">{step.detail}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#888]">Waiting for agent to start...</p>
+          )}
         </div>
       )}
 
