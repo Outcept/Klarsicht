@@ -560,6 +560,32 @@
         <div class="int-desc">Webhook contact point. Alert history, one-click setup via API.</div>
       </div>
 
+      <!-- Live integrations -->
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#9878;</div>
+        <div class="int-name">GitLab</div>
+        <div class="int-desc">Pipelines, merge requests, deployments, code search. Correlate incidents with code changes.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#10074;&#10074;</div>
+        <div class="int-name">Slack</div>
+        <div class="int-desc">RCA summaries with fix steps, evidence, and dashboard link via webhook.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#9993;</div>
+        <div class="int-name">Teams</div>
+        <div class="int-desc">Adaptive Card with root cause, confidence score, and incident link.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#9741;</div>
+        <div class="int-name">Discord</div>
+        <div class="int-desc">Rich embed notifications with color-coded confidence and fix steps.</div>
+      </div>
+
       <!-- Coming soon -->
       <div class="int-card int-soon">
         <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
@@ -573,24 +599,6 @@
         <div class="int-name">Tempo</div>
         <div class="int-desc">Distributed trace lookup for latency and error investigations.</div>
       </div>
-      <div class="int-card int-active">
-        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
-        <div class="int-icon">&#10074;&#10074;</div>
-        <div class="int-name">Slack</div>
-        <div class="int-desc">Post RCA summaries with fix steps to incident channels via webhook.</div>
-      </div>
-      <div class="int-card int-active">
-        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
-        <div class="int-icon">&#9741;</div>
-        <div class="int-name">Discord</div>
-        <div class="int-desc">Rich embed notifications with root cause, evidence, and fix steps.</div>
-      </div>
-      <div class="int-card int-active">
-        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
-        <div class="int-icon">&#9993;</div>
-        <div class="int-name">Teams</div>
-        <div class="int-desc">Adaptive Card with RCA summary, confidence score, and dashboard link.</div>
-      </div>
       <div class="int-card int-soon">
         <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
         <div class="int-icon">&#8634;</div>
@@ -599,27 +607,9 @@
       </div>
       <div class="int-card int-soon">
         <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
-        <div class="int-icon">&#128274;</div>
-        <div class="int-name">Cert-Manager</div>
-        <div class="int-desc">Certificate expiry checks. Detect TLS-related failures automatically.</div>
-      </div>
-      <div class="int-card int-soon">
-        <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
         <div class="int-icon">&#9700;</div>
         <div class="int-name">Cilium / Hubble</div>
         <div class="int-desc">Network flow logs. Identify NetworkPolicy blocks and DNS failures.</div>
-      </div>
-      <div class="int-card int-soon">
-        <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
-        <div class="int-icon">&#8693;</div>
-        <div class="int-name">Flux</div>
-        <div class="int-desc">GitOps reconciliation status. Source and kustomization health.</div>
-      </div>
-      <div class="int-card int-soon">
-        <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
-        <div class="int-icon">&#9878;</div>
-        <div class="int-name">PagerDuty</div>
-        <div class="int-desc">Bi-directional incident sync. Auto-acknowledge when RCA is delivered.</div>
       </div>
     </div>
   </div>
@@ -646,7 +636,7 @@
           <tr class="hl"><td>Correlates across resources</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="cross">&#10007;</span></td></tr>
           <tr class="hl"><td>Generates postmortem</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td></tr>
           <tr class="hl"><td>Slack-native</td><td><span class="check">&#10003; Webhook</span></td><td><span class="check">&#10003; Built-in</span></td><td><span class="check">&#10003;</span></td><td><span class="cross">&#10007;</span></td></tr>
-          <tr class="hl"><td>Integrations</td><td>8 live, 5 coming</td><td><span class="check">40+ tools</span></td><td><span class="check">Full Datadog</span></td><td>K8s only</td></tr>
+          <tr class="hl"><td>Integrations</td><td>8 live, 4 coming</td><td><span class="check">40+ tools</span></td><td><span class="check">Full Datadog</span></td><td>K8s only</td></tr>
           <tr class="hl"><td>Full air-gap / on-prem LLM</td><td><span class="check">&#10003; Ollama/vLLM</span></td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td><td><span class="check">&#10003;</span></td></tr>
           <tr class="hl"><td>Free tier</td><td><span class="check">&#10003; Free to start</span></td><td>Free trial</td><td><span class="cross">&#10007; $$$$</span></td><td><span class="check">&#10003; Open source</span></td></tr>
           <tr class="hl"><td>Setup time</td><td><span class="s" style="color:var(--green)">5 minutes</span></td><td>30 minutes</td><td>Days + sales call</td><td><span class="s" style="color:var(--green)">5 minutes</span></td></tr>
