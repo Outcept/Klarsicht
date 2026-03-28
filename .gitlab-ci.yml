@@ -124,6 +124,8 @@ deploy:
       --set dashboard.image.tag=${CI_COMMIT_SHORT_SHA}
       --set agent.llmApiKey=${KLARSICHT_LLM_API_KEY}
       --set grafana.webhookSecret=${KLARSICHT_WEBHOOK_SECRET:-""}
+      --set gitlab.token=${KLARSICHT_GITLAB_TOKEN:-""}
+      --set slack.webhookUrl=${KLARSICHT_SLACK_WEBHOOK_URL:-""}
       --wait --timeout 5m
   environment:
     name: production

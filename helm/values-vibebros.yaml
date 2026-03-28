@@ -1,0 +1,75 @@
+imagePullSecrets:
+  - name: gitlab-registry
+
+agent:
+  image:
+    repository: registry.gitlab.com/outcept/klarsicht/agent
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  watchNamespaces:
+    - demo
+  metricsEndpoint: "http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090"
+  llmProvider: anthropic
+  llmApiKey: ""  # set via CI variable KLARSICHT_LLM_API_KEY
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+dashboard:
+  image:
+    repository: registry.gitlab.com/outcept/klarsicht/dashboard
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  ingress:
+    enabled: true
+    className: haproxy
+    host: klarsicht.dev
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      - hosts:
+          - klarsicht.dev
+        secretName: klarsicht-dev-tls
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16"
+  storage: 5Gi
+  storageClassName: local-path
+  password: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+grafana:
+  webhookPath: /alert
+  webhookSecret: ""
+
+gitlab:
+  enabled: true
+  url: https://gitlab.com
+  token: ""  # set via CI variable KLARSICHT_GITLAB_TOKEN
+  project: outcept/klarsicht
+
+teams:
+  webhookUrl: ""
+
+slack:
+  webhookUrl: ""
+
+discord:
+  webhookUrl: ""
+
+dashboardUrl: https://klarsicht.dev
