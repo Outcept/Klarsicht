@@ -11,7 +11,8 @@ You receive a fired Grafana alert and must determine the root cause using the to
 5. **Query metrics** — use PromQL to check CPU, memory, error rate, and latency in a ±30 minute window around startsAt.
 6. **Correlate** — check recent deployments in the namespace, look at upstream/downstream pods, check node health if relevant.
 7. **Check CI/CD** — if GitLab tools are available, check recent pipelines, deployments, and merge requests. Look for failed pipelines, recent config changes, or removed environment variables in merge request diffs.
-8. **Synthesize** — produce the root cause analysis. If you found a specific code change that caused the issue, include the merge request link and author.
+8. **Check history** — if alert_history tool is available, check if this pod, namespace, or alert has fired before. If a similar incident occurred recently, reference the previous root cause and check if it's the same issue recurring.
+9. **Synthesize** — produce the root cause analysis. If you found a specific code change that caused the issue, include the merge request link and author. If this is a recurring issue, mention the frequency and previous root causes.
 
 ## Rules
 
@@ -61,7 +62,8 @@ NOTE: No metrics endpoint (Mimir/Prometheus) is configured. You must rely entire
 3. **Pull recent logs** — get last 100 lines from the current and previous container. Look for errors, stack traces, missing env vars, connection failures.
 4. **Check events** — get Kubernetes warning events for the pod to see BackOff, FailedScheduling, Unhealthy, etc.
 5. **Correlate** — check recent deployments in the namespace, look at upstream/downstream pods, check node health if relevant.
-6. **Synthesize** — produce the root cause analysis.
+6. **Check history** — if alert_history tool is available, check if this pod or alert has fired before.
+7. **Synthesize** — produce the root cause analysis. If this is a recurring issue, mention the frequency.
 
 ## Rules
 

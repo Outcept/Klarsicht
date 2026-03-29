@@ -173,6 +173,74 @@ async def list_incidents() -> dict[str, Any]:
     return {str(row["id"]): _row_to_incident(row) for row in rows}
 
 
+async def get_alert_history(
+    alert_name: str = "",
+    namespace: str = "",
+    pod: str = "",
+    days: int = 30,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Find past incidents matching the given criteria.
+
+    Searches by alert_name, namespace, or pod (partial match).
+    Returns recent incidents with their root cause summaries.
+    """
+    pool = _get_pool()
+
+    conditions = ["i.status = 'completed'"]
+    params: list[Any] = []
+    idx = 1
+
+    if alert_name:
+        conditions.append(f"i.alert_name = ${idx}")
+        params.append(alert_name)
+        idx += 1
+
+    if namespace:
+        conditions.append(f"i.namespace = ${idx}")
+        params.append(namespace)
+        idx += 1
+
+    if pod:
+        # Match pod prefix (deployment name without replica hash)
+        pod_prefix = "-".join(pod.split("-")[:-2]) if pod.count("-") >= 2 else pod
+        conditions.append(f"i.pod LIKE ${idx}")
+        params.append(f"{pod_prefix}%")
+        idx += 1
+
+    conditions.append(f"i.started_at > now() - interval '{days} days'")
+    where = " AND ".join(conditions)
+
+    rows = await pool.fetch(
+        f"""
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.started_at,
+               r.root_cause, r.investigated_at
+        FROM incidents i
+        LEFT JOIN rca_results r ON r.incident_id = i.id
+        WHERE {where}
+        ORDER BY i.started_at DESC
+        LIMIT {limit}
+        """,
+        *params,
+    )
+
+    results = []
+    for row in rows:
+        rc_data = json.loads(row["root_cause"]) if row["root_cause"] else None
+        results.append({
+            "incident_id": str(row["id"]),
+            "alert_name": row["alert_name"],
+            "namespace": row["namespace"],
+            "pod": row["pod"],
+            "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+            "root_cause_summary": rc_data.get("summary", "") if rc_data else "",
+            "root_cause_category": rc_data.get("category", "") if rc_data else "",
+            "confidence": rc_data.get("confidence", 0) if rc_data else 0,
+        })
+
+    return results
+
+
 async def get_stats() -> dict[str, Any]:
     """Aggregate incident statistics for the overview dashboard."""
     pool = _get_pool()

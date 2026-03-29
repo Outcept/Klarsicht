@@ -106,6 +106,39 @@ def query_metrics_instant(promql: str) -> str:
     return _serialize(mimir_instant_query(promql))
 
 
+@tool
+def alert_history(alert_name: str = "", namespace: str = "", pod: str = "", days: int = 30) -> str:
+    """Search past incidents for similar alerts. Use this to check if this pod or alert has fired before and what the root cause was last time.
+
+    Args:
+        alert_name: Filter by alert name (e.g. 'CrashLoopBackOff'). Empty for all.
+        namespace: Filter by namespace. Empty for all.
+        pod: Filter by pod name (matches deployment prefix, e.g. 'api-gateway' matches 'api-gateway-7f8b9c-x2k9p'). Empty for all.
+        days: How far back to search in days (default 30).
+    """
+    from app.config import settings
+    if not settings.database_url:
+        return "Alert history not available (no database configured)"
+
+    import asyncio
+    from app.db import get_alert_history
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, get_alert_history(alert_name, namespace, pod, days))
+                result = future.result(timeout=10)
+        else:
+            result = asyncio.run(get_alert_history(alert_name, namespace, pod, days))
+    except Exception as e:
+        return f"Failed to query alert history: {e}"
+
+    if not result:
+        return "No similar past incidents found."
+    return _serialize(result)
+
+
 K8S_TOOLS = [
     get_pod,
     get_events,
@@ -232,6 +265,8 @@ def get_tools() -> list:
     from app.config import settings
 
     tools = list(K8S_TOOLS)
+    if settings.database_url:
+        tools.append(alert_history)
     if settings.mimir_endpoint:
         tools.extend(MIMIR_TOOLS)
     if settings.gitlab_url and settings.gitlab_token and settings.gitlab_project:
