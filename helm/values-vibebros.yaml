@@ -72,4 +72,10 @@ slack:
 discord:
   webhookUrl: ""
 
+landing:
+  enabled: true
+
+site:
+  enabled: true
+
 dashboardUrl: https://klarsicht.dev

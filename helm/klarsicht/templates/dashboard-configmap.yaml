@@ -11,6 +11,7 @@ data:
         listen 80;
         server_name _;
 
+        {{- if .Values.landing.enabled }}
         # Landing page at root
         location = / {
             proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/;
@@ -18,11 +19,16 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # Landing page favicon
         location = /favicon.svg {
             proxy_pass http://{{ include "klarsicht.fullname" . }}-landing.{{ .Release.Namespace }}.svc:80/favicon.svg;
             proxy_set_header Host $host;
         }
+        {{- else }}
+        # No landing page — redirect root to dashboard
+        location = / {
+            return 302 /app/;
+        }
+        {{- end }}
 
         # Dashboard app under /app/ (basic auth)
         location /app/ {
@@ -54,24 +60,25 @@ data:
             proxy_read_timeout 300s;
         }
 
+        {{- if .Values.site.enabled }}
         # Docs & Blog (Hugo)
         location /docs/ {
-            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/docs/;
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-site.{{ .Release.Namespace }}.svc:80/docs/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
         location /blog/ {
-            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/blog/;
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-site.{{ .Release.Namespace }}.svc:80/blog/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # Hugo static assets (css)
         location /css/ {
-            proxy_pass http://klarsicht-site.{{ .Release.Namespace }}.svc:80/css/;
+            proxy_pass http://{{ include "klarsicht.fullname" . }}-site.{{ .Release.Namespace }}.svc:80/css/;
             proxy_set_header Host $host;
         }
+        {{- end }}
 
         # Health check
         location /nginx-health {

@@ -78,6 +78,13 @@ discord:
 # Dashboard URL for links in notifications
 dashboardUrl: ""              # e.g. https://klarsicht.dev
 
+# Optional components (disable for lightweight test instances)
+landing:
+  enabled: false
+
+site:
+  enabled: false
+
 # Override the database URL when using an external database
 externalDatabase:
   url: ""
