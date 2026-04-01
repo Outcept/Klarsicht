@@ -167,9 +167,9 @@ deploy-openrouter:
       --set agent.watchNamespaces[0]=demo
       --set dashboard.ingress.enabled=true
       --set dashboard.ingress.className=haproxy
-      --set dashboard.ingress.host=klarsicht-test.vibebros.net
+      --set dashboard.ingress.host=test.klarsicht.dev
       --set "dashboard.ingress.annotations.cert-manager\.io/cluster-issuer=letsencrypt-prod"
-      --set dashboard.ingress.tls[0].hosts[0]=klarsicht-test.vibebros.net
+      --set dashboard.ingress.tls[0].hosts[0]=test.klarsicht.dev
       --set dashboard.ingress.tls[0].secretName=klarsicht-test-tls
       --wait --timeout 5m
   environment:
