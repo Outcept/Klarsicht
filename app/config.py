@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     llm_model: str = ""  # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3, etc.)
     llm_api_key: str = ""
     llm_base_url: str = ""  # only for ollama/custom: http://ollama.local:11434/v1
+    llm_profile: str = "auto"  # auto, full, compact — compact for small models (<30B)
+    llm_max_tool_calls: int = 0  # 0 = auto (full: 20, compact: 8)
     database_url: str = ""
 
     # GitLab integration

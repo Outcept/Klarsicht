@@ -13,6 +13,8 @@ agent:
   llmModel: ""               # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3.1)
   llmApiKey: ""              # from secret ref (not needed for ollama)
   llmBaseUrl: ""             # only for ollama/custom: http://ollama.default.svc:11434/v1
+  llmProfile: auto           # auto, full, compact — compact for small models (<30B)
+  llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
   resources:
     requests:
       cpu: 100m

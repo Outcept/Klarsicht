@@ -12,8 +12,11 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 
-from app.agent.prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_NO_METRICS
-from app.agent.tools import get_tools
+from app.agent.prompt import (
+    SYSTEM_PROMPT, SYSTEM_PROMPT_NO_METRICS,
+    COMPACT_PROMPT, COMPACT_PROMPT_NO_METRICS,
+)
+from app.agent.tools import get_tools, get_compact_tools
 from app.config import settings
 from app.models.alert import Alert
 from app.models.rca import FixStep, Postmortem, RCAResult, RootCause, TimelineEntry
@@ -65,11 +68,43 @@ def _build_llm() -> BaseChatModel:
     raise ValueError(f"Unknown LLM provider: {provider}. Use: anthropic, openai, ollama")
 
 
+def _resolve_profile() -> str:
+    """Determine the effective LLM profile (full or compact)."""
+    profile = settings.llm_profile.lower()
+    if profile != "auto":
+        return profile
+
+    # Auto-detect based on model name
+    model = (settings.llm_model or "").lower()
+    # Known small models
+    small_patterns = [
+        "7b", "8b", "13b", "14b", "20b", "27b", "32b",
+        "qwen", "mistral-7", "llama-2-7", "llama-2-13",
+        "phi-", "gemma-", "oss-20",
+    ]
+    for pattern in small_patterns:
+        if pattern in model:
+            return "compact"
+    return "full"
+
+
 def _build_agent():
+    profile = _resolve_profile()
     llm = _build_llm()
-    tools = get_tools()
-    prompt = SYSTEM_PROMPT if settings.mimir_endpoint else SYSTEM_PROMPT_NO_METRICS
-    logger.info("Agent using %s (model: %s)", settings.llm_provider, settings.llm_model or "default")
+
+    if profile == "compact":
+        tools = get_compact_tools()
+        prompt = COMPACT_PROMPT
+        max_calls = settings.llm_max_tool_calls or 8
+        logger.info("Agent using %s (model: %s, profile: compact, max_calls: %d, tools: %d)",
+                     settings.llm_provider, settings.llm_model or "default", max_calls, len(tools))
+    else:
+        tools = get_tools()
+        prompt = SYSTEM_PROMPT if settings.mimir_endpoint else SYSTEM_PROMPT_NO_METRICS
+        max_calls = settings.llm_max_tool_calls or 20
+        logger.info("Agent using %s (model: %s, profile: full, tools: %d)",
+                     settings.llm_provider, settings.llm_model or "default", len(tools))
+
     return create_react_agent(llm, tools, prompt=prompt)
 
 

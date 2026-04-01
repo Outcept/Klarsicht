@@ -253,7 +253,7 @@ GITLAB_TOOLS = [
 
 
 def get_tools() -> list:
-    """Return the active tool set based on configuration."""
+    """Return the full tool set based on configuration."""
     from app.config import settings
 
     tools = list(K8S_TOOLS)
@@ -263,4 +263,18 @@ def get_tools() -> list:
         tools.extend(MIMIR_TOOLS)
     if settings.gitlab_url and settings.gitlab_token and settings.gitlab_project:
         tools.extend(GITLAB_TOOLS)
+    return tools
+
+
+def get_compact_tools() -> list:
+    """Return a minimal tool set for small LLMs (<30B parameters).
+
+    Only the 6 most essential tools — keeps the tool descriptions
+    short so the model doesn't get confused with too many options.
+    """
+    from app.config import settings
+
+    tools = [get_pod, get_logs, get_events, list_deployments, get_node]
+    if settings.database_url:
+        tools.append(alert_history)
     return tools
