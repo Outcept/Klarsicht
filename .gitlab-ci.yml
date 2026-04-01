@@ -141,6 +141,7 @@ deploy-openrouter:
     entrypoint: [""]
   before_script:
     - kubectl config use-context outcept/kubernetes-agent-setup:test-agent
+    - kubectl create namespace klarsicht-openrouter --dry-run=client -o yaml | kubectl apply -f -
     - >-
       kubectl create secret docker-registry gitlab-registry
       --namespace=klarsicht-openrouter
