@@ -133,3 +133,47 @@ deploy:
       namespace: klarsicht
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy-openrouter:
+  stage: deploy
+  image:
+    name: dtzar/helm-kubectl:3.17.3
+    entrypoint: [""]
+  before_script:
+    - kubectl config use-context outcept/kubernetes-agent-setup:test-agent
+    - >-
+      kubectl create secret docker-registry gitlab-registry
+      --namespace=klarsicht-openrouter
+      --docker-server=${CI_REGISTRY}
+      --docker-username=${CI_REGISTRY_USER}
+      --docker-password=${CI_REGISTRY_PASSWORD}
+      --dry-run=client -o yaml | kubectl apply -f -
+  script:
+    - >-
+      helm upgrade --install klarsicht-openrouter helm/klarsicht/
+      -n klarsicht-openrouter --create-namespace
+      --set imagePullSecrets[0].name=gitlab-registry
+      --set agent.image.repository=${CI_REGISTRY_IMAGE}/agent
+      --set agent.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set dashboard.image.repository=${CI_REGISTRY_IMAGE}/dashboard
+      --set dashboard.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set agent.llmProvider=openai
+      --set agent.llmBaseUrl=https://openrouter.ai/api/v1
+      --set agent.llmApiKey=${KLARSICHT_OPENROUTER_API_KEY}
+      --set agent.llmModel=qwen/qwen-2.5-72b-instruct
+      --set agent.llmProfile=compact
+      --set agent.metricsEndpoint=http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+      --set agent.watchNamespaces[0]=demo
+      --set dashboard.ingress.enabled=true
+      --set dashboard.ingress.className=haproxy
+      --set dashboard.ingress.host=klarsicht-test.vibebros.net
+      --set "dashboard.ingress.annotations.cert-manager\.io/cluster-issuer=letsencrypt-prod"
+      --set dashboard.ingress.tls[0].hosts[0]=klarsicht-test.vibebros.net
+      --set dashboard.ingress.tls[0].secretName=klarsicht-test-tls
+      --wait --timeout 5m
+  environment:
+    name: openrouter-test
+    kubernetes:
+      namespace: klarsicht-openrouter
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
