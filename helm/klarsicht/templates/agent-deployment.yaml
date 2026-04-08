@@ -39,6 +39,10 @@ spec:
             - name: KLARSICHT_LLM_BASE_URL
               value: {{ .Values.agent.llmBaseUrl | quote }}
             {{- end }}
+            {{- if .Values.agent.watsonxProjectId }}
+            - name: KLARSICHT_WATSONX_PROJECT_ID
+              value: {{ .Values.agent.watsonxProjectId | quote }}
+            {{- end }}
             - name: KLARSICHT_LLM_PROFILE
               value: {{ .Values.agent.llmProfile | default "auto" | quote }}
             {{- if .Values.agent.llmMaxToolCalls }}
@@ -108,6 +112,73 @@ spec:
             {{- if .Values.dashboardUrl }}
             - name: KLARSICHT_DASHBOARD_URL
               value: {{ .Values.dashboardUrl | quote }}
+            {{- end }}
+            {{- if .Values.dashboard.oidc.enabled }}
+            - name: KLARSICHT_AUTH_ENABLED
+              value: "true"
+            - name: KLARSICHT_OIDC_ISSUER_URL
+              value: {{ .Values.dashboard.oidc.issuerUrl | quote }}
+            - name: KLARSICHT_OIDC_CLIENT_ID
+              value: {{ .Values.dashboard.oidc.clientId | quote }}
+            {{- if .Values.dashboard.oidc.clientSecret }}
+            - name: KLARSICHT_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: oidc-client-secret
+            {{- end }}
+            {{- if .Values.dashboard.oidc.claimMapping }}
+            - name: KLARSICHT_AUTH_CLAIM_MAPPING
+              value: {{ .Values.dashboard.oidc.claimMapping | quote }}
+            {{- end }}
+            {{- if .Values.dashboard.oidc.teamMappings }}
+            - name: KLARSICHT_AUTH_TEAM_MAPPINGS
+              value: {{ .Values.dashboard.oidc.teamMappings | quote }}
+            {{- end }}
+            {{- if .Values.dashboard.oidc.adminTeams }}
+            - name: KLARSICHT_AUTH_ADMIN_TEAMS
+              value: {{ .Values.dashboard.oidc.adminTeams | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.confluence.enabled }}
+            - name: KLARSICHT_CONFLUENCE_URL
+              value: {{ .Values.confluence.url | quote }}
+            {{- if .Values.confluence.user }}
+            - name: KLARSICHT_CONFLUENCE_USER
+              value: {{ .Values.confluence.user | quote }}
+            {{- end }}
+            - name: KLARSICHT_CONFLUENCE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: confluence-token
+            {{- if .Values.confluence.spaces }}
+            - name: KLARSICHT_CONFLUENCE_SPACES
+              value: {{ .Values.confluence.spaces | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.agent.peerWebhookUrls }}
+            - name: KLARSICHT_PEER_WEBHOOK_URLS
+              value: {{ .Values.agent.peerWebhookUrls | quote }}
+            {{- end }}
+            {{- if ne .Values.agent.mode "standalone" }}
+            - name: KLARSICHT_MODE
+              value: {{ .Values.agent.mode | quote }}
+            {{- end }}
+            {{- if .Values.agent.clusterName }}
+            - name: KLARSICHT_CLUSTER_NAME
+              value: {{ .Values.agent.clusterName | quote }}
+            {{- end }}
+            {{- if .Values.agent.joinToken }}
+            - name: KLARSICHT_JOIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: join-token
+            {{- end }}
+            {{- if .Values.agent.backendUrl }}
+            - name: KLARSICHT_BACKEND_URL
+              value: {{ .Values.agent.backendUrl | quote }}
             {{- end }}
           livenessProbe:
             httpGet:

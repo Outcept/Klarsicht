@@ -28,6 +28,7 @@ _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-20250514",
     "openai": "gpt-4o",
     "ollama": "llama3.1",
+    "watsonx": "ibm/granite-3-8b-instruct",
 }
 
 
@@ -65,7 +66,23 @@ def _build_llm() -> BaseChatModel:
             max_tokens=4096,
         )
 
-    raise ValueError(f"Unknown LLM provider: {provider}. Use: anthropic, openai, ollama")
+    if provider == "watsonx":
+        from langchain_ibm import ChatWatsonx
+        kwargs: dict[str, Any] = {
+            "model_id": model,
+            "temperature": 0,
+            "max_tokens": 4096,
+        }
+        if settings.llm_base_url:
+            # Internal/custom watsonx endpoint
+            kwargs["url"] = settings.llm_base_url
+        if settings.llm_api_key:
+            kwargs["apikey"] = settings.llm_api_key
+        if settings.watsonx_project_id:
+            kwargs["project_id"] = settings.watsonx_project_id
+        return ChatWatsonx(**kwargs)
+
+    raise ValueError(f"Unknown LLM provider: {provider}. Use: anthropic, openai, ollama, watsonx")
 
 
 def _resolve_profile() -> str:
@@ -81,6 +98,7 @@ def _resolve_profile() -> str:
         "7b", "8b", "13b", "14b", "20b", "27b", "32b",
         "qwen", "mistral-7", "llama-2-7", "llama-2-13",
         "phi-", "gemma-", "oss-20",
+        "granite-3-8b", "granite-3-2b",
     ]
     for pattern in small_patterns:
         if pattern in model:
@@ -88,19 +106,38 @@ def _resolve_profile() -> str:
     return "full"
 
 
+def _cluster_addendum() -> str:
+    """Build a prompt addendum listing available clusters (backend mode only)."""
+    if not settings.is_backend:
+        return ""
+    from app.cluster_registry import list_agents
+    agents = list_agents()
+    if not agents:
+        return "\n\nNOTE: No cluster agents are registered yet. K8s tools are unavailable until an agent joins.\n"
+    lines = ["\n\n## Available clusters\n"]
+    lines.append("All K8s/metrics tools require a `cluster` parameter. Use one of these cluster names:\n")
+    for a in agents:
+        metrics = "yes" if a.has_metrics else "no"
+        lines.append(f"- **{a.name}** (metrics: {metrics})")
+    return "\n".join(lines) + "\n"
+
+
 def _build_agent():
     profile = _resolve_profile()
     llm = _build_llm()
 
+    cluster_info = _cluster_addendum()
+
     if profile == "compact":
         tools = get_compact_tools()
-        prompt = COMPACT_PROMPT
+        prompt = COMPACT_PROMPT + cluster_info
         max_calls = settings.llm_max_tool_calls or 8
         logger.info("Agent using %s (model: %s, profile: compact, max_calls: %d, tools: %d)",
                      settings.llm_provider, settings.llm_model or "default", max_calls, len(tools))
     else:
         tools = get_tools()
-        prompt = SYSTEM_PROMPT if settings.mimir_endpoint else SYSTEM_PROMPT_NO_METRICS
+        base_prompt = SYSTEM_PROMPT if settings.mimir_endpoint else SYSTEM_PROMPT_NO_METRICS
+        prompt = base_prompt + cluster_info
         max_calls = settings.llm_max_tool_calls or 20
         logger.info("Agent using %s (model: %s, profile: full, tools: %d)",
                      settings.llm_provider, settings.llm_model or "default", len(tools))

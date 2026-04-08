@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS incidents (
     namespace       TEXT NOT NULL,
     pod             TEXT NOT NULL,
     status          TEXT NOT NULL DEFAULT 'investigating',
+    labels          JSONB DEFAULT '{}',
     started_at      TIMESTAMPTZ NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -68,18 +69,20 @@ async def create_incident(
     namespace: str,
     pod: str,
     started_at: datetime,
+    labels: dict[str, str] | None = None,
 ) -> None:
     """Insert a new incident row with status 'investigating'."""
     pool = _get_pool()
     await pool.execute(
         """
-        INSERT INTO incidents (id, alert_name, namespace, pod, status, started_at)
-        VALUES ($1, $2, $3, $4, 'investigating', $5)
+        INSERT INTO incidents (id, alert_name, namespace, pod, status, labels, started_at)
+        VALUES ($1, $2, $3, $4, 'investigating', $5, $6)
         """,
         incident_id,
         alert_name,
         namespace,
         pod,
+        json.dumps(labels or {}),
         started_at,
     )
 
@@ -137,7 +140,8 @@ def _row_to_incident(row: asyncpg.Record) -> dict[str, Any]:
             postmortem=Postmortem(**postmortem_data) if postmortem_data else None,
         ).model_dump(mode="json")
 
-    return {"status": status, "result": result}
+    labels = json.loads(row["labels"]) if row.get("labels") else {}
+    return {"status": status, "result": result, "labels": labels}
 
 
 async def get_incident(incident_id: UUID) -> dict[str, Any] | None:
@@ -145,7 +149,7 @@ async def get_incident(incident_id: UUID) -> dict[str, Any] | None:
     pool = _get_pool()
     row = await pool.fetchrow(
         """
-        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.started_at,
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at,
                r.investigated_at, r.root_cause, r.fix_steps, r.postmortem
         FROM incidents i
         LEFT JOIN rca_results r ON r.incident_id = i.id
@@ -163,7 +167,7 @@ async def list_incidents() -> dict[str, Any]:
     pool = _get_pool()
     rows = await pool.fetch(
         """
-        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.started_at,
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at,
                r.investigated_at, r.root_cause, r.fix_steps, r.postmortem
         FROM incidents i
         LEFT JOIN rca_results r ON r.incident_id = i.id

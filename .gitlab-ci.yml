@@ -126,6 +126,7 @@ deploy:
       --set grafana.webhookSecret=${KLARSICHT_WEBHOOK_SECRET:-""}
       --set gitlab.token=${KLARSICHT_GITLAB_TOKEN:-""}
       --set slack.webhookUrl=${KLARSICHT_SLACK_WEBHOOK_URL:-""}
+      --set agent.peerWebhookUrls="http://klarsicht-openrouter-agent.klarsicht-openrouter.svc:8000\,http://klarsicht-gamma-agent.klarsicht-gamma.svc:8000"
       --wait --timeout 5m
   environment:
     name: production
@@ -176,5 +177,52 @@ deploy-openrouter:
     name: openrouter-test
     kubernetes:
       namespace: klarsicht-openrouter
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy-gamma:
+  stage: deploy
+  image:
+    name: dtzar/helm-kubectl:3.17.3
+    entrypoint: [""]
+  before_script:
+    - kubectl config use-context outcept/kubernetes-agent-setup:test-agent
+    - kubectl create namespace klarsicht-gamma --dry-run=client -o yaml | kubectl apply -f -
+    - >-
+      kubectl create secret docker-registry gitlab-registry
+      --namespace=klarsicht-gamma
+      --docker-server=${CI_REGISTRY}
+      --docker-username=${CI_REGISTRY_USER}
+      --docker-password=${CI_REGISTRY_PASSWORD}
+      --dry-run=client -o yaml | kubectl apply -f -
+  script:
+    - >-
+      helm upgrade --install klarsicht-gamma helm/klarsicht/
+      -n klarsicht-gamma --create-namespace
+      --set imagePullSecrets[0].name=gitlab-registry
+      --set agent.image.repository=${CI_REGISTRY_IMAGE}/agent
+      --set agent.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set dashboard.image.repository=${CI_REGISTRY_IMAGE}/dashboard
+      --set dashboard.image.tag=${CI_COMMIT_SHORT_SHA}
+      --set agent.llmProvider=openai
+      --set agent.llmBaseUrl=https://openrouter.ai/api/v1
+      --set agent.llmApiKey=${KLARSICHT_OPENROUTER_API_KEY}
+      --set agent.llmModel=google/gemma-4-27b-it-e4b
+      --set agent.llmProfile=compact
+      --set agent.metricsEndpoint=http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+      --set agent.watchNamespaces[0]=demo
+      --set dashboard.ingress.enabled=true
+      --set dashboard.ingress.className=haproxy
+      --set dashboard.ingress.host=gamma.klarsicht.dev
+      --set "dashboard.ingress.annotations.cert-manager\.io/cluster-issuer=letsencrypt-prod"
+      --set dashboard.ingress.tls[0].hosts[0]=gamma.klarsicht.dev
+      --set dashboard.ingress.tls[0].secretName=klarsicht-gamma-tls
+      --set dashboardUrl=https://gamma.klarsicht.dev
+      --set postgres.storageClassName=local-path
+      --wait --timeout 5m
+  environment:
+    name: gamma-test
+    kubernetes:
+      namespace: klarsicht-gamma
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

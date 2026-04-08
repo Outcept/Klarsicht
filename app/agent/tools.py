@@ -145,6 +145,124 @@ MIMIR_TOOLS = [
 ]
 
 
+# --- Multi-cluster (remote) tool variants ---
+# These include a `cluster` parameter so the LLM can target a specific cluster.
+
+
+@tool
+def remote_get_pod(cluster: str, namespace: str, pod_name: str) -> str:
+    """Get pod status from a specific cluster including phase, restart count, conditions, resource limits/requests, node name, and container statuses.
+
+    Args:
+        cluster: Cluster name (e.g. 'prod-eu-1', 'staging').
+        namespace: Kubernetes namespace.
+        pod_name: Name of the pod.
+    """
+    from app.tools.remote_k8s import remote_get_pod as _remote
+    return _serialize(_remote(cluster, namespace, pod_name))
+
+
+@tool
+def remote_get_events(cluster: str, namespace: str, involved_object_name: str) -> str:
+    """Get Kubernetes warning events for a specific object on a specific cluster from the last 60 minutes.
+
+    Args:
+        cluster: Cluster name.
+        namespace: Kubernetes namespace.
+        involved_object_name: Name of the involved object (e.g. pod name).
+    """
+    from app.tools.remote_k8s import remote_get_events as _remote
+    return _serialize(_remote(cluster, namespace, involved_object_name))
+
+
+@tool
+def remote_get_logs(
+    cluster: str,
+    namespace: str,
+    pod_name: str,
+    container: str = "",
+    previous: bool = False,
+    tail: int = 100,
+) -> str:
+    """Get container logs from a pod on a specific cluster. Use previous=True for crash loop logs.
+
+    Args:
+        cluster: Cluster name.
+        namespace: Kubernetes namespace.
+        pod_name: Name of the pod.
+        container: Container name. Leave empty for single-container pods.
+        previous: If True, get logs from the previous (crashed) container instance.
+        tail: Number of log lines to return (default 100).
+    """
+    from app.tools.remote_k8s import remote_get_logs as _remote
+    return _remote(cluster, namespace, pod_name, container, previous, tail)
+
+
+@tool
+def remote_list_deployments(cluster: str, namespace: str) -> str:
+    """List all deployments in a namespace on a specific cluster with replica counts, images, and last update timestamps.
+
+    Args:
+        cluster: Cluster name.
+        namespace: Kubernetes namespace.
+    """
+    from app.tools.remote_k8s import remote_list_deployments as _remote
+    return _serialize(_remote(cluster, namespace))
+
+
+@tool
+def remote_get_node(cluster: str, node_name: str) -> str:
+    """Get node status from a specific cluster including allocatable resources, conditions, and taints.
+
+    Args:
+        cluster: Cluster name.
+        node_name: Name of the Kubernetes node.
+    """
+    from app.tools.remote_k8s import remote_get_node as _remote
+    return _serialize(_remote(cluster, node_name))
+
+
+@tool
+def remote_query_metrics(cluster: str, promql: str, start: str, end: str, step: str = "60s") -> str:
+    """Execute a PromQL range query against a specific cluster's Prometheus/Mimir. Returns time series data.
+
+    Args:
+        cluster: Cluster name.
+        promql: PromQL expression.
+        start: Range start as RFC3339 timestamp.
+        end: Range end as RFC3339 timestamp.
+        step: Query resolution step (e.g. '60s', '5m').
+    """
+    from app.tools.remote_k8s import remote_query_metrics as _remote
+    return _serialize(_remote(cluster, promql, start, end, step))
+
+
+@tool
+def remote_query_metrics_instant(cluster: str, promql: str) -> str:
+    """Execute an instant PromQL query against a specific cluster's Prometheus/Mimir.
+
+    Args:
+        cluster: Cluster name.
+        promql: PromQL expression.
+    """
+    from app.tools.remote_k8s import remote_query_metrics_instant as _remote
+    return _serialize(_remote(cluster, promql))
+
+
+REMOTE_K8S_TOOLS = [
+    remote_get_pod,
+    remote_get_events,
+    remote_get_logs,
+    remote_list_deployments,
+    remote_get_node,
+]
+
+REMOTE_MIMIR_TOOLS = [
+    remote_query_metrics,
+    remote_query_metrics_instant,
+]
+
+
 # --- GitLab tools ---
 
 @tool
@@ -252,15 +370,131 @@ GITLAB_TOOLS = [
 ]
 
 
+# --- Connectivity tools ---
+
+@tool
+def check_endpoint(url: str, timeout: int = 5) -> str:
+    """Check if an external endpoint is reachable. Use this to verify connectivity to databases, APIs, or other services that a pod depends on.
+
+    Supports HTTP/HTTPS URLs (returns status code, response time, TLS cert info) and TCP URLs like tcp://host:port (returns if port is open).
+
+    Args:
+        url: Endpoint URL (e.g. 'https://payment-api:8443/healthz', 'http://redis:6379', 'tcp://db:5432').
+        timeout: Connection timeout in seconds (default 5, max 30).
+    """
+    from app.tools.connectivity import check_endpoint as _check
+    return _serialize(_check(url, timeout))
+
+
+CONNECTIVITY_TOOLS = [
+    check_endpoint,
+]
+
+
+@tool
+def remote_check_endpoint(cluster: str, url: str, timeout: int = 5) -> str:
+    """Check if an external endpoint is reachable from a specific cluster. Use this to verify connectivity to databases, APIs, or other services.
+
+    Supports HTTP/HTTPS URLs (returns status code, response time, TLS cert info) and TCP URLs like tcp://host:port (returns if port is open).
+
+    Args:
+        cluster: Cluster name (e.g. 'prod-eu-1', 'staging').
+        url: Endpoint URL (e.g. 'https://payment-api:8443/healthz', 'tcp://db:5432').
+        timeout: Connection timeout in seconds (default 5, max 30).
+    """
+    from app.tools.remote_k8s import remote_check_endpoint as _remote
+    return _serialize(_remote(cluster, url, timeout))
+
+
+REMOTE_CONNECTIVITY_TOOLS = [
+    remote_check_endpoint,
+]
+
+
+# --- Confluence / Service Catalog tools ---
+
+
+@tool
+async def lookup_service(service_name: str, namespace: str = "") -> str:
+    """Look up a service's tech stack, dependencies, team, and operations handbook (BHB).
+    Use this when you need to understand what a service depends on, who owns it, or where to find runbooks.
+
+    Args:
+        service_name: Service or deployment name (e.g. 'payment-api', 'rabbitmq-cluster').
+        namespace: Kubernetes namespace (optional, helps disambiguate).
+    """
+    from app.config import settings
+    if not settings.database_url:
+        return "Service catalog not available (no database configured)"
+
+    from app.catalog import lookup_service_info
+    try:
+        info = await lookup_service_info(service_name, namespace)
+    except Exception as e:
+        return f"Failed to look up service: {e}"
+
+    if not info:
+        return f"Service '{service_name}' not found in catalog. Try checking pod labels or Confluence directly."
+    return _serialize(info)
+
+
+@tool
+async def search_runbook(service_name: str, section: str = "operations", namespace: str = "") -> str:
+    """Fetch the operations handbook (BHB) for a service from Confluence.
+    Use this to find fix steps, escalation contacts, monitoring info, or recovery plans.
+
+    Available sections: operations, monitoring, procedures, recovery, architecture, contacts, description, installation, security.
+
+    Args:
+        service_name: Service or deployment name.
+        section: BHB section to fetch (default: 'operations'). Use 'recovery' for disaster recovery plans.
+        namespace: Kubernetes namespace (optional).
+    """
+    from app.config import settings
+    if not settings.confluence_url:
+        return "Confluence not configured"
+    if not settings.database_url:
+        return "Service catalog not available (no database configured)"
+
+    from app.catalog import get_runbook_content
+    try:
+        result = await get_runbook_content(service_name, section, namespace)
+    except Exception as e:
+        return f"Failed to fetch runbook: {e}"
+
+    if not result:
+        return f"No runbook found for '{service_name}'. Available sections may differ — try lookup_service first to see what's available."
+    return _serialize(result)
+
+
+CATALOG_TOOLS = [
+    lookup_service,
+    search_runbook,
+]
+
+
 def get_tools() -> list:
     """Return the full tool set based on configuration."""
     from app.config import settings
 
-    tools = list(K8S_TOOLS)
+    if settings.is_backend:
+        # Multi-cluster: use remote tools that target specific clusters
+        tools = list(REMOTE_K8S_TOOLS)
+        # Add remote metrics — agents that have metrics will accept the call;
+        # the LLM learns which clusters have metrics from the system prompt.
+        tools.extend(REMOTE_MIMIR_TOOLS)
+        tools.extend(REMOTE_CONNECTIVITY_TOOLS)
+    else:
+        # Standalone: local K8s tools
+        tools = list(K8S_TOOLS)
+        if settings.mimir_endpoint:
+            tools.extend(MIMIR_TOOLS)
+        tools.extend(CONNECTIVITY_TOOLS)
+
     if settings.database_url:
         tools.append(alert_history)
-    if settings.mimir_endpoint:
-        tools.extend(MIMIR_TOOLS)
+        if settings.confluence_url:
+            tools.extend(CATALOG_TOOLS)
     if settings.gitlab_url and settings.gitlab_token and settings.gitlab_project:
         tools.extend(GITLAB_TOOLS)
     return tools
@@ -269,12 +503,20 @@ def get_tools() -> list:
 def get_compact_tools() -> list:
     """Return a minimal tool set for small LLMs (<30B parameters).
 
-    Only the 6 most essential tools — keeps the tool descriptions
+    Only the most essential tools — keeps the tool descriptions
     short so the model doesn't get confused with too many options.
     """
     from app.config import settings
 
-    tools = [get_pod, get_logs, get_events, list_deployments, get_node]
+    if settings.is_backend:
+        tools = [remote_get_pod, remote_get_logs, remote_get_events, remote_list_deployments, remote_get_node,
+                 remote_check_endpoint]
+    else:
+        tools = [get_pod, get_logs, get_events, list_deployments, get_node,
+                 check_endpoint]
+
     if settings.database_url:
         tools.append(alert_history)
+        if settings.confluence_url:
+            tools.append(lookup_service)
     return tools

@@ -9,12 +9,19 @@ agent:
   replicas: 1
   watchNamespaces: []        # empty = all namespaces
   metricsEndpoint: ""        # Prometheus: http://prometheus:9090, Mimir: http://mimir:9009/prometheus
-  llmProvider: anthropic     # anthropic, openai, ollama
-  llmModel: ""               # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3.1)
+  llmProvider: anthropic     # anthropic, openai, ollama, watsonx
+  llmModel: ""               # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3.1, granite-3-8b-instruct)
   llmApiKey: ""              # from secret ref (not needed for ollama)
-  llmBaseUrl: ""             # only for ollama/custom: http://ollama.default.svc:11434/v1
+  llmBaseUrl: ""             # ollama/custom/watsonx: http://ollama:11434/v1 or internal watsonx URL
+  watsonxProjectId: ""       # watsonx only: IBM project ID
   llmProfile: auto           # auto, full, compact — compact for small models (<30B)
   llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
+  peerWebhookUrls: ""        # comma-separated peer URLs for alert fan-out + comparison
+  # Multi-cluster
+  mode: standalone            # standalone, backend, agent
+  clusterName: ""             # agent mode: name of this cluster (e.g. "prod-eu-1")
+  joinToken: ""               # shared secret for agent<->backend registration
+  backendUrl: ""              # agent mode: URL of the central backend
   resources:
     requests:
       cpu: 100m
@@ -31,6 +38,15 @@ dashboard:
   replicas: 1
   auth:
     htpasswd: ""  # Generate with: htpasswd -nb user password
+  # OIDC authentication (optional — enables team-based access control)
+  oidc:
+    enabled: false
+    issuerUrl: ""             # https://login.microsoftonline.com/{tenant}/v2.0
+    clientId: ""
+    clientSecret: ""
+    claimMapping: ""          # JSON: {"department": "team"}
+    teamMappings: ""          # JSON: {"XY-Z": ["XY-Z1", "XY-Z2"]}
+    adminTeams: ""            # comma-separated: sre,admin
   ingress:
     enabled: false
     className: ""
@@ -74,6 +90,14 @@ slack:
 
 discord:
   webhookUrl: ""              # Discord Webhook URL
+
+# Confluence integration (BHB / operations handbooks)
+confluence:
+  enabled: false
+  url: ""                       # https://company.atlassian.net/wiki or https://confluence.company.com
+  user: ""                      # Cloud: email address, Server/DC: leave empty for PAT
+  token: ""                     # API token (Cloud) or Personal Access Token (Server/DC)
+  spaces: ""                    # comma-separated space keys: "OPS,INFRA,PLATFORM"
 
 # Dashboard URL for links in notifications
 dashboardUrl: ""              # e.g. https://klarsicht.dev

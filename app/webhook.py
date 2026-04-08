@@ -9,11 +9,12 @@ from uuid import UUID, uuid4
 
 import requests as http_requests
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ValidationError
 
 from app.agent.rca_agent import run_investigation
+from app.auth import AuthUser, can_view_incident, filter_incidents, get_current_user
 from app.config import settings
 from app.models.alert import Alert, GrafanaWebhookPayload
 from app.models.rca import RCAResult
@@ -22,21 +23,37 @@ logger = logging.getLogger(__name__)
 
 # In-memory fallback when no database_url is configured
 _memory_store: dict[str, RCAResult | None] = {}
+_memory_labels: dict[str, dict[str, str]] = {}
 _use_db = bool(settings.database_url)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if _use_db:
+    if _use_db and not settings.is_agent:
         from app.db import close_db, init_db
         await init_db()
+        # Initialize service catalog tables if Confluence is configured
+        if settings.confluence_url:
+            from app.catalog import init_catalog_schema
+            await init_catalog_schema()
+
+    # Agent mode: register with backend on startup
+    if settings.is_agent:
+        from app.agent_startup import register_with_backend
+        register_with_backend()
+
     yield
-    if _use_db:
+
+    if _use_db and not settings.is_agent:
         from app.db import close_db
         await close_db()
 
 
 app = FastAPI(title="Klarsicht", version="0.1.0", lifespan=lifespan)
+
+# Mount cluster API (join endpoint on backend, K8s tools on agent)
+from app.cluster_api import router as cluster_router
+app.include_router(cluster_router)
 
 
 def verify_hmac_signature(body: bytes, signature: str, secret: str) -> bool:
@@ -125,11 +142,17 @@ async def receive_alert(
                 alert.labels.get("namespace", "unknown"),
                 alert.labels.get("pod", "unknown"),
                 alert.startsAt,
+                labels=alert.labels,
             )
         else:
             _memory_store[str(incident_id)] = None
+            _memory_labels[str(incident_id)] = alert.labels
 
         asyncio.create_task(_run_and_store(incident_id, alert))
+
+    # Fan-out: forward raw payload to peer instances
+    if settings.peer_url_list:
+        _forward_to_peers(body)
 
     return {
         "status": "accepted",
@@ -137,6 +160,22 @@ async def receive_alert(
         "alerts_received": len(payload.alerts),
         "alerts_firing": len(incident_ids),
     }
+
+
+def _forward_to_peers(body: bytes) -> None:
+    """Forward alert payload to all configured peer instances (fire-and-forget)."""
+    for base_url in settings.peer_url_list:
+        url = base_url.rstrip("/") + "/alert"
+        try:
+            http_requests.post(
+                url,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                timeout=5,
+            )
+            logger.info("Forwarded alert to peer %s", url)
+        except Exception:
+            logger.warning("Failed to forward alert to peer %s", url, exc_info=True)
 
 
 @app.post("/test")
@@ -184,9 +223,11 @@ async def send_test_alert(request: Request):
                 alert.labels.get("namespace", "unknown"),
                 alert.labels.get("pod", "unknown"),
                 alert.startsAt,
+                labels=alert.labels,
             )
         else:
             _memory_store[str(incident_id)] = None
+            _memory_labels[str(incident_id)] = alert.labels
 
         asyncio.create_task(_run_and_store(incident_id, alert))
 
@@ -322,23 +363,26 @@ async def grafana_setup(req: GrafanaSetupRequest):
 
 
 @app.get("/incidents")
-async def list_incidents_endpoint():
+async def list_incidents_endpoint(user: AuthUser | None = Depends(get_current_user)):
     """List all incidents and their investigation status."""
     if _use_db:
         from app.db import list_incidents
-        return await list_incidents()
-
-    return {
-        iid: {
-            "status": "completed" if result is not None else "investigating",
-            "result": result.model_dump(mode="json") if result else None,
+        incidents = await list_incidents()
+    else:
+        incidents = {
+            iid: {
+                "status": "completed" if result is not None else "investigating",
+                "result": result.model_dump(mode="json") if result else None,
+                "labels": _memory_labels.get(iid, {}),
+            }
+            for iid, result in _memory_store.items()
         }
-        for iid, result in _memory_store.items()
-    }
+
+    return filter_incidents(incidents, user)
 
 
 @app.get("/incidents/{incident_id}")
-async def get_incident_endpoint(incident_id: str):
+async def get_incident_endpoint(incident_id: str, user: AuthUser | None = Depends(get_current_user)):
     """Get a specific incident's RCA result."""
     if _use_db:
         from app.db import get_incident
@@ -349,15 +393,20 @@ async def get_incident_endpoint(incident_id: str):
         data = await get_incident(uid)
         if data is None:
             raise HTTPException(status_code=404, detail="Incident not found")
+        if not can_view_incident(data, user):
+            raise HTTPException(status_code=403, detail="Access denied")
         return data
 
     if incident_id not in _memory_store:
         raise HTTPException(status_code=404, detail="Incident not found")
-    result = _memory_store[incident_id]
-    return {
-        "status": "completed" if result is not None else "investigating",
-        "result": result.model_dump(mode="json") if result else None,
+    data = {
+        "status": "completed" if _memory_store[incident_id] is not None else "investigating",
+        "result": _memory_store[incident_id].model_dump(mode="json") if _memory_store[incident_id] else None,
+        "labels": _memory_labels.get(incident_id, {}),
     }
+    if not can_view_incident(data, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return data
 
 
 @app.get("/incidents/{incident_id}/steps")
@@ -393,3 +442,118 @@ async def stream_incident_steps(incident_id: str):
             yield ": keepalive\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.get("/compare")
+async def compare_instances():
+    """Compare performance and results across this instance and all peers."""
+    instances = []
+
+    # Collect own stats
+    own_stats = await stats_endpoint()
+    instances.append({
+        "instance": settings.dashboard_url or "self",
+        "model": f"{settings.llm_provider}/{settings.llm_model or 'default'}",
+        "stats": own_stats,
+    })
+
+    # Collect peer stats
+    for base_url in settings.peer_url_list:
+        url = base_url.rstrip("/")
+        try:
+            resp = http_requests.get(f"{url}/stats", timeout=10)
+            resp.raise_for_status()
+            peer_stats = resp.json()
+            instances.append({
+                "instance": base_url,
+                "stats": peer_stats,
+            })
+        except Exception:
+            logger.warning("Failed to fetch stats from peer %s", base_url, exc_info=True)
+            instances.append({
+                "instance": base_url,
+                "stats": None,
+                "error": "unreachable",
+            })
+
+    # Build comparison summary
+    summary = []
+    for inst in instances:
+        s = inst.get("stats")
+        if s:
+            summary.append({
+                "instance": inst["instance"],
+                "model": inst.get("model", "unknown"),
+                "total_incidents": s.get("total_incidents", 0),
+                "completed": s.get("completed", 0),
+                "failed": s.get("failed", 0),
+                "avg_investigation_seconds": s.get("avg_investigation_seconds", 0),
+                "category_breakdown": s.get("category_breakdown", []),
+            })
+
+    return {"instances": instances, "summary": summary}
+
+
+# --- Service Catalog / Confluence Sync ---
+
+
+@app.post("/catalog/sync")
+async def catalog_sync():
+    """Sync service catalog: crawl Confluence BHBs and K8s deployments."""
+    if not _use_db:
+        raise HTTPException(status_code=400, detail="Database required for service catalog")
+
+    results = {}
+
+    if settings.confluence_url:
+        from app.catalog import sync_confluence
+        results["confluence"] = await sync_confluence()
+
+    if not settings.is_backend:
+        try:
+            from app.catalog import sync_k8s_deployments
+            results["k8s"] = await sync_k8s_deployments()
+        except Exception as e:
+            results["k8s"] = {"error": str(e)}
+
+    return {"status": "ok", **results}
+
+
+@app.post("/catalog/match")
+async def catalog_match():
+    """Run LLM-based fuzzy matching of deployments to BHB pages."""
+    if not _use_db:
+        raise HTTPException(status_code=400, detail="Database required for service catalog")
+    if not settings.confluence_url:
+        raise HTTPException(status_code=400, detail="Confluence not configured")
+
+    from app.catalog import bootstrap_llm_matching
+    result = await bootstrap_llm_matching()
+    return result
+
+
+@app.get("/catalog")
+async def catalog_list():
+    """List all services in the catalog with their BHB matches."""
+    if not _use_db:
+        raise HTTPException(status_code=400, detail="Database required for service catalog")
+
+    from app.db import _get_pool
+    import json
+    pool = _get_pool()
+    rows = await pool.fetch(
+        "SELECT name, namespace, cluster, team, tech, dependencies, bhb_title, match_confidence FROM service_catalog ORDER BY name"
+    )
+    return [
+        {
+            "name": r["name"],
+            "namespace": r["namespace"],
+            "cluster": r["cluster"],
+            "team": r["team"],
+            "tech": r["tech"],
+            "dependencies": json.loads(r["dependencies"]) if r["dependencies"] else [],
+            "bhb_title": r["bhb_title"],
+            "match_confidence": r["match_confidence"],
+        }
+        for r in rows
+    ]
