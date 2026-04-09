@@ -36,6 +36,33 @@ helm.sh/chart: {{ include "klarsicht.chart" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/part-of: klarsicht
+{{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Pod security context (non-root, read-only root fs where possible)
+*/}}
+{{- define "klarsicht.podSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: {{ .Values.securityContext.runAsUser | default 1000 }}
+runAsGroup: {{ .Values.securityContext.runAsGroup | default 1000 }}
+fsGroup: {{ .Values.securityContext.fsGroup | default 1000 }}
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Container security context
+*/}}
+{{- define "klarsicht.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: {{ .readOnly | default false }}
+capabilities:
+  drop:
+    - ALL
 {{- end }}
 
 {{/*

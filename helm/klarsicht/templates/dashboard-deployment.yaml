@@ -15,12 +15,16 @@ spec:
       labels:
         {{- include "klarsicht.dashboard.selectorLabels" . | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "klarsicht.podSecurityContext" . | nindent 8 }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
       containers:
         - name: dashboard
+          securityContext:
+            {{- include "klarsicht.containerSecurityContext" (dict "readOnly" false) | nindent 12 }}
           image: "{{ .Values.dashboard.image.repository }}:{{ .Values.dashboard.image.tag }}"
           imagePullPolicy: {{ .Values.dashboard.image.pullPolicy }}
           ports:

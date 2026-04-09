@@ -16,12 +16,16 @@ spec:
         {{- include "klarsicht.agent.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "klarsicht.serviceAccountName" . }}
+      securityContext:
+        {{- include "klarsicht.podSecurityContext" . | nindent 8 }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
       containers:
         - name: agent
+          securityContext:
+            {{- include "klarsicht.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
           imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
           ports:

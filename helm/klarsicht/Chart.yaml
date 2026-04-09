@@ -19,24 +19,8 @@ keywords:
   - llm
 annotations:
   artifacthub.io/license: MIT
-  artifacthub.io/links: |
-    - name: Website
-      url: https://klarsicht.dev
-    - name: Documentation
-      url: https://klarsicht.dev/docs/
-    - name: Source
-      url: https://github.com/Outcept/Klarsicht
-  artifacthub.io/changes: |
-    - kind: added
-      description: Multi-cluster support with join-token agent registration
-    - kind: added
-      description: OIDC authentication with team-based access control
-    - kind: added
-      description: IBM watsonx LLM provider
-    - kind: added
-      description: Connectivity check tool (HTTP/TCP/TLS)
-    - kind: added
-      description: Confluence BHB integration and service catalog
+  artifacthub.io/links: "- name: Website\n  url: https://klarsicht.dev\n- name: Documentation\n  url: https://klarsicht.dev/docs/\n- name: Source\n  url: https://github.com/Outcept/Klarsicht"
+  artifacthub.io/changes: "- kind: added\n  description: Multi-cluster support with join-token agent registration\n- kind: added\n  description: OIDC authentication with team-based access control\n- kind: added\n  description: IBM watsonx LLM provider\n- kind: added\n  description: Connectivity check tool (HTTP/TCP/TLS)\n- kind: added\n  description: Confluence BHB integration and service catalog"
 maintainers:
   - name: Outcept
     url: https://outcept.ch
