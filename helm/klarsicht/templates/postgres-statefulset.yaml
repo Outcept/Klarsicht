@@ -18,7 +18,12 @@ spec:
         {{- include "klarsicht.postgres.podLabels" . | nindent 8 }}
     spec:
       securityContext:
-        {{- include "klarsicht.podSecurityContext" . | nindent 8 }}
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           securityContext:
