@@ -823,7 +823,8 @@
         <div class="code-block">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           <code><span class="cmt"># Install Klarsicht into your cluster</span>
-helm install klarsicht oci://ghcr.io/outcept/klarsicht/helm/klarsicht \
+helm repo add klarsicht https://outcept.github.io/Klarsicht
+helm install klarsicht klarsicht/klarsicht \
   <span class="f">--namespace</span> klarsicht <span class="f">--create-namespace</span> \
   <span class="f">--set</span> agent.llmApiKey=<span class="s">&lt;your-anthropic-api-key&gt;</span> \
   <span class="f">--set</span> agent.metricsEndpoint=<span class="s">http://prometheus.monitoring.svc:9090</span></code>

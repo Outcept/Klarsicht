@@ -19,7 +19,8 @@ Grafana Alert → Klarsicht Agent → K8s API + Prometheus → LLM → RCA Resul
 ## Quick Start
 
 ```bash
-helm install klarsicht oci://ghcr.io/outcept/klarsicht/helm/klarsicht \
+helm repo add klarsicht https://outcept.github.io/Klarsicht
+helm install klarsicht klarsicht/klarsicht \
   --namespace klarsicht --create-namespace \
   --set agent.llmApiKey=<your-api-key> \
   --set agent.metricsEndpoint=http://prometheus.monitoring.svc:9090
