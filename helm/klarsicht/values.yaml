@@ -89,6 +89,10 @@ postgres:
   storage: 5Gi
   storageClassName: ""
   password: ""               # auto-generated if empty
+  # Override pod/container security context for postgres only
+  # If not set, falls back to the global podSecurityContext / containerSecurityContext
+  podSecurityContext: {}
+  containerSecurityContext: {}
   resources:
     requests:
       cpu: 100m
