@@ -79,18 +79,19 @@ jobs:
           fetch-depth: 0
       - uses: azure/setup-helm@v4
       - name: Package chart
-        run: helm package helm/klarsicht --destination .helm-pkg
+        run: |
+          helm package helm/klarsicht --destination /tmp/helm-pkg
       - name: Checkout gh-pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
-          # Keep only chart packages and index
-          find . -maxdepth 1 ! -name '.git' ! -name '.' ! -name '*.tgz' ! -name 'index.yaml' -exec rm -rf {} +
+          git rm -rf . 2>/dev/null || true
+          git clean -fdx
       - name: Update index and push
         run: |
-          cp .helm-pkg/*.tgz .
+          cp /tmp/helm-pkg/*.tgz .
           helm repo index . --url https://outcept.github.io/Klarsicht
           git add *.tgz index.yaml
-          git commit -m "Publish Helm chart $(ls *.tgz | head -1)" || true
-          git push origin gh-pages
+          git commit -m "Publish Helm chart $(ls *.tgz | head -1)"
+          git push origin gh-pages --force
