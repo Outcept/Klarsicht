@@ -24,7 +24,7 @@ spec:
       containers:
         - name: dashboard
           securityContext:
-            {{- include "klarsicht.containerSecurityContext" (dict "readOnly" false) | nindent 12 }}
+            {{- include "klarsicht.containerSecurityContext" . | nindent 12 }}
           image: "{{ .Values.dashboard.image.repository }}:{{ .Values.dashboard.image.tag }}"
           imagePullPolicy: {{ .Values.dashboard.image.pullPolicy }}
           ports:

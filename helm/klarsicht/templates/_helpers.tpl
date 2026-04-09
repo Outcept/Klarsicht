@@ -43,26 +43,17 @@ app.kubernetes.io/part-of: klarsicht
 {{- end }}
 
 {{/*
-Pod security context (non-root, read-only root fs where possible)
+Pod security context — fully overridable via values
 */}}
 {{- define "klarsicht.podSecurityContext" -}}
-runAsNonRoot: true
-runAsUser: {{ .Values.securityContext.runAsUser | default 1000 }}
-runAsGroup: {{ .Values.securityContext.runAsGroup | default 1000 }}
-fsGroup: {{ .Values.securityContext.fsGroup | default 1000 }}
-seccompProfile:
-  type: RuntimeDefault
+{{- toYaml .Values.podSecurityContext }}
 {{- end }}
 
 {{/*
-Container security context
+Container security context — fully overridable via values
 */}}
 {{- define "klarsicht.containerSecurityContext" -}}
-allowPrivilegeEscalation: false
-readOnlyRootFilesystem: {{ .readOnly | default false }}
-capabilities:
-  drop:
-    - ALL
+{{- toYaml .Values.containerSecurityContext }}
 {{- end }}
 
 {{/*

@@ -25,7 +25,7 @@ spec:
       containers:
         - name: agent
           securityContext:
-            {{- include "klarsicht.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
+            {{- include "klarsicht.containerSecurityContext" . | nindent 12 }}
           image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
           imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
           ports:
