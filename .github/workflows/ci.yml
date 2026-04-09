@@ -66,3 +66,17 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/dashboard:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}/dashboard:latest
+
+  publish-helm:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - run: helm package helm/klarsicht --destination .helm-pkg
+      - run: helm push .helm-pkg/klarsicht-*.tgz oci://ghcr.io/outcept/klarsicht/helm
