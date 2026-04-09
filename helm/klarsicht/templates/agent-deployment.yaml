@@ -197,5 +197,15 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- if .Values.emptyDirVolumes.enabled }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          {{- end }}
           resources:
             {{- toYaml .Values.agent.resources | nindent 12 }}
+      {{- if .Values.emptyDirVolumes.enabled }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- end }}

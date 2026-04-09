@@ -20,6 +20,11 @@ containerSecurityContext:
     drop:
       - ALL
 
+# emptyDir volumes for readOnlyRootFilesystem support
+# Mounts writable tmpfs dirs so nginx/uvicorn can write pid, cache, logs
+emptyDirVolumes:
+  enabled: false            # set true when using readOnlyRootFilesystem: true
+
 imagePullSecrets: []
 #  - name: gitlab-registry
 

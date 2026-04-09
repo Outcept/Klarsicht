@@ -39,6 +39,14 @@ spec:
             - name: auth
               mountPath: /etc/nginx/auth
               readOnly: true
+            {{- if .Values.emptyDirVolumes.enabled }}
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /nginx-health
@@ -66,3 +74,11 @@ spec:
         - name: auth
           secret:
             secretName: {{ include "klarsicht.fullname" . }}-dashboard-auth
+        {{- if .Values.emptyDirVolumes.enabled }}
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        {{- end }}
