@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "klarsicht.postgres.selectorLabels" . | nindent 8 }}
+        {{- include "klarsicht.postgres.podLabels" . | nindent 8 }}
     spec:
       securityContext:
         {{- include "klarsicht.podSecurityContext" . | nindent 8 }}

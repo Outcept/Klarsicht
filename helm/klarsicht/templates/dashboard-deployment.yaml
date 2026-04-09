@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "klarsicht.dashboard.selectorLabels" . | nindent 8 }}
+        {{- include "klarsicht.dashboard.podLabels" . | nindent 8 }}
     spec:
       securityContext:
         {{- include "klarsicht.podSecurityContext" . | nindent 8 }}

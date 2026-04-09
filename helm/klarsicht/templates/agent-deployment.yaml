@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "klarsicht.agent.selectorLabels" . | nindent 8 }}
+        {{- include "klarsicht.agent.podLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "klarsicht.serviceAccountName" . }}
       securityContext:
