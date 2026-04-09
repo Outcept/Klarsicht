@@ -6,9 +6,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . \
+    && python -m compileall -q /usr/local/lib/python3.13
 
 COPY app/ ./app/
+RUN python -m compileall -q ./app/
+
+# Non-root user
+RUN addgroup --system --gid 1000 klarsicht \
+    && adduser --system --uid 1000 --ingroup klarsicht klarsicht
+USER 1000
 
 EXPOSE 8000
 
