@@ -1,0 +1,50 @@
+apiVersion: v1
+entries:
+  klarsicht:
+  - annotations:
+      artifacthub.io/changes: |
+        - kind: added
+          description: Multi-cluster support with join-token agent registration
+        - kind: added
+          description: OIDC authentication with team-based access control
+        - kind: added
+          description: IBM watsonx LLM provider
+        - kind: added
+          description: Connectivity check tool (HTTP/TCP/TLS)
+        - kind: added
+          description: Confluence BHB integration and service catalog
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Website
+          url: https://klarsicht.dev
+        - name: Documentation
+          url: https://klarsicht.dev/docs/
+        - name: Source
+          url: https://github.com/Outcept/Klarsicht
+    apiVersion: v2
+    appVersion: 0.2.0
+    created: "2026-04-09T13:14:20.671961151Z"
+    description: AI-powered Root Cause Analysis agent for Kubernetes
+    digest: ceabdd503a8a24eab7bc8cc6ccae8dff1b2fbb46d8ca689d1a88ebb32b823366
+    home: https://klarsicht.dev
+    keywords:
+    - kubernetes
+    - rca
+    - observability
+    - ai
+    - root-cause-analysis
+    - grafana
+    - prometheus
+    - incident-response
+    - llm
+    maintainers:
+    - name: Outcept
+      url: https://outcept.ch
+    name: klarsicht
+    sources:
+    - https://github.com/Outcept/Klarsicht
+    type: application
+    urls:
+    - https://outcept.github.io/Klarsicht/klarsicht-0.2.0.tgz
+    version: 0.2.0
+generated: "2026-04-09T13:14:20.671247534Z"
