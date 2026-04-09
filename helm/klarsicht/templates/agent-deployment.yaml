@@ -201,11 +201,15 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: home
+              mountPath: /home/klarsicht
           {{- end }}
           resources:
             {{- toYaml .Values.agent.resources | nindent 12 }}
       {{- if .Values.emptyDirVolumes.enabled }}
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: home
           emptyDir: {}
       {{- end }}
