@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/klarsicht
+  IMAGE_PREFIX: ghcr.io/outcept/klarsicht
 
 jobs:
   test:
