@@ -58,9 +58,45 @@ curl -X POST http://klarsicht-agent.klarsicht.svc:8000/test
 └───────────────────────────────────────────┘
 ```
 
-**Two deployment models:**
-- **Agent Mode** — LLM runs externally (Anthropic, OpenAI). Only investigation context leaves the cluster.
-- **On-Prem Mode** — LLM runs in-cluster (Ollama, vLLM). Zero external calls. Air-gap ready.
+**Three deployment models:**
+- **Standalone** — Single cluster. LLM runs externally or locally. Default.
+- **Multi-Cluster** — Central backend + lightweight agents per cluster. Join-token registration.
+- **On-Prem** — LLM runs in-cluster (Ollama, vLLM, watsonx). Zero external calls. Air-gap ready.
+
+## Multi-Cluster
+
+Deploy a lightweight agent on each cluster that registers with a central backend:
+
+```bash
+# Central backend (has LLM, stores results, serves dashboard)
+helm install klarsicht-backend ... \
+  --set agent.mode=backend \
+  --set agent.joinToken=my-secret-token
+
+# Agent on cluster B (no LLM, just exposes K8s tools)
+helm install klarsicht-agent ... \
+  --set agent.mode=agent \
+  --set agent.clusterName=prod-eu-1 \
+  --set agent.joinToken=my-secret-token \
+  --set agent.backendUrl=http://klarsicht-backend.central.svc:8000
+```
+
+Agents auto-register on startup. The LLM tools include a `cluster` parameter so the AI can inspect any connected cluster.
+
+## OIDC Authentication
+
+Team-based access control via OIDC. Map token claims to alert labels — teams only see their own incidents:
+
+```yaml
+dashboard:
+  oidc:
+    enabled: true
+    issuerUrl: https://login.microsoftonline.com/{tenant}/v2.0
+    clientId: your-client-id
+    claimMapping: '{"department": "team"}'
+    teamMappings: '{"XY-Z": ["XY-Z1", "XY-Z2"]}'
+    adminTeams: "sre,admin"
+```
 
 ## Supported LLM Providers
 
@@ -75,6 +111,14 @@ helm install klarsicht ... \
   --set agent.llmProvider=openai \
   --set agent.llmApiKey=sk-... \
   --set agent.llmModel=gpt-4o
+
+# IBM watsonx
+helm install klarsicht ... \
+  --set agent.llmProvider=watsonx \
+  --set agent.llmApiKey=your-iam-key \
+  --set agent.llmModel=ibm/granite-3-8b-instruct \
+  --set agent.llmBaseUrl=https://your-watsonx-endpoint \
+  --set agent.watsonxProjectId=your-project-id
 
 # Ollama (local, air-gapped)
 helm install klarsicht ... \
@@ -100,6 +144,9 @@ helm install klarsicht ... \
 | `list_deployments` | Replica counts, images, rollout history |
 | `get_node` | Node conditions, allocatable resources, taints |
 | `query_metrics` | PromQL range queries against Prometheus/Mimir |
+| `check_endpoint` | HTTP/TCP connectivity checks, TLS cert info, response time |
+| `lookup_service` | Service catalog — tech stack, dependencies, team, runbook link |
+| `search_runbook` | Fetch operations handbook (BHB) sections from Confluence |
 
 All read-only. No write permissions. No exec. No secrets accessed.
 
@@ -124,11 +171,29 @@ All read-only. No write permissions. No exec. No secrets accessed.
 }
 ```
 
+## Confluence Integration
+
+Auto-discover operations handbooks (BHBs) from Confluence and build a service catalog:
+
+```bash
+# 1. Sync — crawls Confluence spaces, discovers BHBs
+curl -X POST http://klarsicht:8000/catalog/sync
+
+# 2. Match — LLM fuzzy-matches K8s deployments to BHB pages
+curl -X POST http://klarsicht:8000/catalog/match
+
+# 3. Done — agent now has lookup_service + search_runbook tools
+```
+
+The agent automatically fetches relevant runbook sections during investigations.
+
 ## Integrations
 
-**Live:** Kubernetes, Prometheus, Mimir, Grafana
+**Live:** Kubernetes, Prometheus, Mimir, Grafana, Confluence, Slack, Teams, Discord, GitLab CI/CD
 
-**Coming soon:** Loki, Tempo, Slack, ArgoCD, Cert-Manager, Cilium/Hubble, Flux, PagerDuty
+**LLM Providers:** Anthropic Claude, OpenAI, IBM watsonx, Ollama, any OpenAI-compatible API
+
+**Coming soon:** Loki, Tempo, ArgoCD, Cert-Manager, Cilium/Hubble, Flux, PagerDuty
 
 ## Test Results
 

@@ -419,8 +419,8 @@
   <div class="container">
     <div class="fade-in">
       <p class="label">Architecture</p>
-      <h2 class="stitle">Two deployment models. Same intelligence.</h2>
-      <p class="sdesc">Choose between cloud LLM or fully on-prem. Your data, your rules.</p>
+      <h2 class="stitle">Three deployment models. Same intelligence.</h2>
+      <p class="sdesc">Single cluster, multi-cluster, or fully on-prem. Anthropic, OpenAI, watsonx, Ollama — your choice.</p>
     </div>
 
     <div class="arch-toggle fade-in">
@@ -519,7 +519,7 @@
 
         <div class="arch-desc">
           <strong style="color:var(--text)">Full On-Prem</strong> &mdash;
-          Zero external calls. The LLM runs inside your cluster via Ollama, vLLM, or any OpenAI-compatible endpoint. Nothing leaves your network. Ideal for air-gapped environments, regulated industries (FINMA, BaFin, GDPR).
+          Zero external calls. The LLM runs inside your cluster via Ollama, vLLM, IBM watsonx, or any OpenAI-compatible endpoint. Nothing leaves your network. Ideal for air-gapped environments, regulated industries (FINMA, BaFin, GDPR).
         </div>
       </div>
     </div>
@@ -588,6 +588,38 @@
         <div class="int-desc">Rich embed notifications with color-coded confidence and fix steps.</div>
       </div>
 
+      <!-- New integrations -->
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#128274;</div>
+        <div class="int-name">OIDC Auth</div>
+        <div class="int-desc">Team-based access control. Map OIDC claims to alert labels. Teams only see their incidents.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#9729;</div>
+        <div class="int-name">IBM watsonx</div>
+        <div class="int-desc">Native watsonx.ai integration via langchain-ibm. Granite models, IAM auth, custom endpoints.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#128268;</div>
+        <div class="int-name">Connectivity</div>
+        <div class="int-desc">HTTP/TCP dependency checks with TLS cert inspection. Verify if DBs, APIs, caches are reachable.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#128218;</div>
+        <div class="int-name">Confluence</div>
+        <div class="int-desc">Auto-discover BHB operations handbooks. Agent fetches runbooks during investigation.</div>
+      </div>
+      <div class="int-card int-active">
+        <div class="int-status"><span class="int-dot int-dot-live"></span> Live</div>
+        <div class="int-icon">&#127760;</div>
+        <div class="int-name">Multi-Cluster</div>
+        <div class="int-desc">Central backend + lightweight agents per cluster. Join-token registration. Inspect any cluster.</div>
+      </div>
+
       <!-- Coming soon -->
       <div class="int-card int-soon">
         <div class="int-status"><span class="int-dot int-dot-soon"></span> Coming soon</div>
@@ -639,7 +671,7 @@
           <tr class="hl"><td>Generates postmortem</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td></tr>
           <tr class="hl"><td>Slack-native</td><td><span class="check">&#10003; Webhook</span></td><td><span class="check">&#10003; Built-in</span></td><td><span class="check">&#10003;</span></td><td><span class="cross">&#10007;</span></td></tr>
           <tr class="hl"><td>Integrations</td><td>8 live, 4 coming</td><td><span class="check">40+ tools</span></td><td><span class="check">Full Datadog</span></td><td>K8s only</td></tr>
-          <tr class="hl"><td>Full air-gap / on-prem LLM</td><td><span class="check">&#10003; Ollama/vLLM</span></td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td><td><span class="check">&#10003;</span></td></tr>
+          <tr class="hl"><td>Full air-gap / on-prem LLM</td><td><span class="check">&#10003; Ollama/vLLM/watsonx</span></td><td><span class="cross">&#10007;</span></td><td><span class="cross">&#10007;</span></td><td><span class="check">&#10003;</span></td></tr>
           <tr class="hl"><td>Free tier</td><td><span class="check">&#10003; Free to start</span></td><td>Free trial</td><td><span class="cross">&#10007; $$$$</span></td><td><span class="check">&#10003; Open source</span></td></tr>
           <tr class="hl"><td>Setup time</td><td><span class="s" style="color:var(--green)">5 minutes</span></td><td>30 minutes</td><td>Days + sales call</td><td><span class="s" style="color:var(--green)">5 minutes</span></td></tr>
           <tr class="hl"><td>EU data residency</td><td><span class="check">&#10003; Your infra</span></td><td>VPC option</td><td><span class="cross">US-hosted</span></td><td><span class="check">&#10003; Your infra</span></td></tr>
