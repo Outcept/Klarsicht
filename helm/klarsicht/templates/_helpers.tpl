@@ -75,12 +75,15 @@ app.kubernetes.io/component: agent
 {{- end }}
 
 {{/*
-Agent pod labels (selector + common)
+Agent pod labels (selector + common + agent-specific)
 */}}
 {{- define "klarsicht.agent.podLabels" -}}
 {{ include "klarsicht.agent.selectorLabels" . }}
 app.kubernetes.io/part-of: klarsicht
 {{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- with .Values.agent.podLabels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
@@ -104,12 +107,15 @@ app.kubernetes.io/component: dashboard
 {{- end }}
 
 {{/*
-Dashboard pod labels (selector + common)
+Dashboard pod labels (selector + common + dashboard-specific)
 */}}
 {{- define "klarsicht.dashboard.podLabels" -}}
 {{ include "klarsicht.dashboard.selectorLabels" . }}
 app.kubernetes.io/part-of: klarsicht
 {{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- with .Values.dashboard.podLabels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
@@ -133,12 +139,15 @@ app.kubernetes.io/component: postgres
 {{- end }}
 
 {{/*
-Postgres pod labels (selector + common)
+Postgres pod labels (selector + common + postgres-specific)
 */}}
 {{- define "klarsicht.postgres.podLabels" -}}
 {{ include "klarsicht.postgres.selectorLabels" . }}
 app.kubernetes.io/part-of: klarsicht
 {{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- with .Values.postgres.podLabels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}

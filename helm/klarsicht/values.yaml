@@ -43,6 +43,7 @@ agent:
   watsonxProjectId: ""       # watsonx only: IBM project ID
   llmProfile: auto           # auto, full, compact — compact for small models (<30B)
   llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
+  podLabels: {}               # extra labels on agent pods only
   peerWebhookUrls: ""        # comma-separated peer URLs for alert fan-out + comparison
   # Multi-cluster
   mode: standalone            # standalone, backend, agent
@@ -63,6 +64,7 @@ dashboard:
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
+  podLabels: {}               # extra labels on dashboard pods only
   auth:
     htpasswd: ""  # Generate with: htpasswd -nb user password
   # OIDC authentication (optional — enables team-based access control)
@@ -90,9 +92,11 @@ postgres:
   storageClassName: ""
   password: ""               # auto-generated if empty
   # Override pod/container security context for postgres only
-  # If not set, falls back to the global podSecurityContext / containerSecurityContext
+  # If not set, falls back to global. Set inheritSecurityContext: false to disable.
+  inheritSecurityContext: true
   podSecurityContext: {}
   containerSecurityContext: {}
+  podLabels: {}
   resources:
     requests:
       cpu: 100m
