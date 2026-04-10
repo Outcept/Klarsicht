@@ -3,8 +3,12 @@ import Overview from "./pages/Overview";
 import IncidentList from "./pages/IncidentList";
 import IncidentDetail from "./pages/IncidentDetail";
 import Setup from "./pages/Setup";
+import Login from "./pages/Login";
+import NotFound from "./pages/NotFound";
+import { AuthProvider, useAuth } from "./auth";
 
 function Nav() {
+  const { enabled, user, logout } = useAuth();
   const link = "text-sm transition-colors";
   const active = "text-white";
   const inactive = "text-[#888] hover:text-white";
@@ -28,24 +32,53 @@ function Nav() {
           <NavLink to="/setup" className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
             Setup
           </NavLink>
+          {enabled && user && (
+            <button onClick={logout} className={`${link} ${inactive}`}>
+              Sign out
+            </button>
+          )}
         </nav>
       </div>
     </header>
   );
 }
 
+function ProtectedApp() {
+  const { enabled, user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+        <p className="text-sm text-[#888]">Loading…</p>
+      </div>
+    );
+  }
+
+  if (enabled && !user) {
+    return <Login />;
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <Nav />
+      <Routes>
+        <Route path="/" element={<Overview />} />
+        <Route path="/incidents" element={<IncidentList />} />
+        <Route path="/incidents/:id" element={<IncidentDetail />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route path="/callback" element={<Overview />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <BrowserRouter basename="/app">
-      <div className="min-h-screen bg-black text-white">
-        <Nav />
-        <Routes>
-          <Route path="/" element={<Overview />} />
-          <Route path="/incidents" element={<IncidentList />} />
-          <Route path="/incidents/:id" element={<IncidentDetail />} />
-          <Route path="/setup" element={<Setup />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter basename="/app">
+        <ProtectedApp />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

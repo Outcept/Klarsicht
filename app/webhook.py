@@ -95,6 +95,17 @@ async def _run_and_store(incident_id: UUID, alert: Alert) -> None:
             await mark_incident_failed(incident_id)
 
 
+@app.get("/auth/config")
+async def auth_config():
+    """Public OIDC config the dashboard reads at runtime to set up PKCE flow."""
+    return {
+        "enabled": settings.auth_enabled,
+        "issuer_url": settings.oidc_issuer_url,
+        "client_id": settings.oidc_client_id,
+        "scopes": settings.oidc_scopes,
+    }
+
+
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
