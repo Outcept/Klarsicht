@@ -58,7 +58,7 @@ data:
 
         # Dashboard SPA at /app/ — serves index.html for any /app/* path
         location /app/ {
-            {{- if not .Values.dashboard.oidc.enabled }}
+            {{- if and (not .Values.dashboard.oidc.enabled) .Values.dashboard.basicAuth.enabled }}
             auth_basic "Klarsicht Dashboard";
             auth_basic_user_file /etc/nginx/auth/.htpasswd;
             {{- end }}
@@ -68,7 +68,7 @@ data:
         {{- else }}
         # No landing page — dashboard SPA at root, falls back to index.html for SPA routing
         location / {
-            {{- if not .Values.dashboard.oidc.enabled }}
+            {{- if and (not .Values.dashboard.oidc.enabled) .Values.dashboard.basicAuth.enabled }}
             auth_basic "Klarsicht Dashboard";
             auth_basic_user_file /etc/nginx/auth/.htpasswd;
             {{- end }}
@@ -88,7 +88,7 @@ data:
 
         # API — protected (dashboard calls it)
         location /api/ {
-            {{- if not .Values.dashboard.oidc.enabled }}
+            {{- if and (not .Values.dashboard.oidc.enabled) .Values.dashboard.basicAuth.enabled }}
             auth_basic "Klarsicht";
             auth_basic_user_file /etc/nginx/auth/.htpasswd;
             {{- end }}

@@ -73,6 +73,8 @@ dashboard:
   podLabels: {}               # extra labels on dashboard pods only
   auth:
     htpasswd: ""  # Generate with: htpasswd -nb user password
+  basicAuth:
+    enabled: true   # set false to disable basic auth (OIDC always overrides this)
   # OIDC authentication (optional — enables team-based access control)
   oidc:
     enabled: false
