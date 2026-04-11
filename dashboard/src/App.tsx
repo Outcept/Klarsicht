@@ -66,7 +66,7 @@ function ProtectedApp() {
         <Route path="/incidents" element={<IncidentList />} />
         <Route path="/incidents/:id" element={<IncidentDetail />} />
         <Route path="/setup" element={<Setup />} />
-        <Route path="/callback" element={<Overview />} />
+        <Route path="/oauth2/callback" element={<Overview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>

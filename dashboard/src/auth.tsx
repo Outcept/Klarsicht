@@ -42,7 +42,7 @@ function buildUserManager(config: AuthConfig, basename: string): UserManager {
   return new UserManager({
     authority: config.issuer_url,
     client_id: config.client_id,
-    redirect_uri: `${window.location.origin}${cleanBase}/callback`,
+    redirect_uri: `${window.location.origin}${cleanBase}/oauth2/callback`,
     post_logout_redirect_uri: `${window.location.origin}${cleanBase}/`,
     response_type: "code",
     scope: config.scopes || "openid profile email",
@@ -74,7 +74,7 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
         userManager = buildUserManager(config, appBasename);
 
         const cleanBase = appBasename === "/" ? "" : appBasename;
-        const callbackPath = `${cleanBase}/callback`;
+        const callbackPath = `${cleanBase}/oauth2/callback`;
         const homePath = `${cleanBase}/`;
 
         // Handle the OIDC redirect callback
