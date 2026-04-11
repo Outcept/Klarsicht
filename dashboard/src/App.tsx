@@ -69,6 +69,9 @@ function ProtectedApp() {
         <Route path="/oauth2/callback" element={<Overview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <div className="fixed bottom-3 right-4 text-[10px] font-mono text-[#555] pointer-events-none select-none">
+        v{__APP_VERSION__}
+      </div>
     </div>
   );
 }
