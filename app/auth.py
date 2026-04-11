@@ -167,10 +167,24 @@ class AuthUser:
 
 
 def resolve_user(claims: dict[str, Any]) -> AuthUser:
-    """Build an AuthUser from OIDC claims using the configured mappings."""
+    """Build an AuthUser from OIDC claims using the configured mappings.
+
+    Fail-open behaviour: if either claim_mapping or admin_teams is empty,
+    every authenticated user becomes an admin (sees everything). This avoids
+    locking everyone out on minimal/unconfigured installs.
+    """
     claim_mapping = _get_claim_mapping()
     team_mappings = _get_team_mappings()
     admin_teams = _get_admin_teams()
+
+    # No filtering configured → everyone is admin
+    if not claim_mapping or not admin_teams:
+        return AuthUser(
+            sub=claims.get("sub", ""),
+            claims=claims,
+            is_admin=True,
+            allowed_label_values={},
+        )
 
     allowed: dict[str, list[str]] = {}
     is_admin = False
