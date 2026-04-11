@@ -110,7 +110,13 @@ async def auth_config():
 
 
 def _public_url(request: Request, path: str) -> str:
-    """Build a fully-qualified URL for the request, honouring proxy headers."""
+    """Build a fully-qualified public URL.
+
+    Prefers the configured dashboard_url (canonical, never wrong) and falls
+    back to parsing X-Forwarded-* headers when not configured.
+    """
+    if settings.dashboard_url:
+        return settings.dashboard_url.rstrip("/") + path
     scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
     host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
     return f"{scheme}://{host}{path}"
