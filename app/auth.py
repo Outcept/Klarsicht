@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import requests
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
@@ -31,11 +31,56 @@ logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=False)
 
-# --- JWKS cache ---
+SESSION_COOKIE = "klarsicht_session"
+SESSION_TTL = 8 * 3600  # 8 hours
+
+# --- JWKS / OIDC discovery cache ---
 
 _jwks_cache: dict[str, Any] = {}
 _jwks_fetched_at: float = 0
+_oidc_config: dict[str, Any] = {}
+_oidc_config_fetched_at: float = 0
 _JWKS_TTL = 3600  # 1 hour
+
+
+def get_oidc_config() -> dict[str, Any]:
+    """Fetch and cache the OIDC discovery document."""
+    global _oidc_config, _oidc_config_fetched_at
+    now = time.time()
+    if _oidc_config and (now - _oidc_config_fetched_at) < _JWKS_TTL:
+        return _oidc_config
+    issuer = settings.oidc_issuer_url.rstrip("/")
+    url = f"{issuer}/.well-known/openid-configuration"
+    _oidc_config = requests.get(url, timeout=10).json()
+    _oidc_config_fetched_at = now
+    return _oidc_config
+
+
+# --- Session cookie (signed JWT) ---
+
+
+def _session_secret() -> str:
+    """Server-side secret for signing session cookies."""
+    return settings.oidc_client_secret or settings.join_token or "dev-secret-change-me"
+
+
+def sign_session(claims: dict[str, Any]) -> str:
+    """Sign a session JWT with the OIDC claims we care about."""
+    payload = {
+        "claims": claims,
+        "exp": int(time.time()) + SESSION_TTL,
+        "iat": int(time.time()),
+    }
+    return jwt.encode(payload, _session_secret(), algorithm="HS256")
+
+
+def verify_session(token: str) -> dict[str, Any] | None:
+    """Verify and decode a session JWT. Returns claims dict or None."""
+    try:
+        payload = jwt.decode(token, _session_secret(), algorithms=["HS256"])
+        return payload.get("claims", {})
+    except JWTError:
+        return None
 
 
 def _get_claim_mapping() -> dict[str, str]:
@@ -149,24 +194,32 @@ def resolve_user(claims: dict[str, Any]) -> AuthUser:
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> AuthUser | None:
-    """FastAPI dependency: validate token and return AuthUser.
+    """FastAPI dependency: validate session cookie OR bearer token.
 
     Returns None when auth is disabled (all data visible).
     """
     if not settings.auth_enabled:
         return None
 
-    if credentials is None:
-        raise HTTPException(status_code=401, detail="Missing authorization header")
+    # 1. Session cookie (BFF flow — set by /auth/callback)
+    session_token = request.cookies.get(SESSION_COOKIE)
+    if session_token:
+        claims = verify_session(session_token)
+        if claims is not None:
+            return resolve_user(claims)
 
-    try:
-        payload = decode_token(credentials.credentials)
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    # 2. Bearer token (SPA PKCE flow or API clients)
+    if credentials is not None:
+        try:
+            payload = decode_token(credentials.credentials)
+            return resolve_user(payload)
+        except JWTError as e:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
-    return resolve_user(payload)
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 # --- Incident filtering ---

@@ -1,9 +1,11 @@
 /**
- * OIDC PKCE auth for the Klarsicht dashboard.
+ * OIDC auth for the Klarsicht dashboard.
  *
- * Reads runtime config from /api/auth/config (so the same build can be
- * deployed against any OIDC provider). Stores tokens in sessionStorage,
- * adds Authorization: Bearer header to fetch via authFetch().
+ * Two modes, picked at runtime via /api/auth/config:
+ *  - BFF mode (bff_mode=true): backend handles the OAuth flow, sets a
+ *    session cookie. React just calls /api/auth/login and /api/auth/me.
+ *  - PKCE mode (bff_mode=false): React handles the flow itself with
+ *    oidc-client-ts. Used when no client secret is configured.
  */
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
@@ -14,11 +16,18 @@ interface AuthConfig {
   issuer_url: string;
   client_id: string;
   scopes: string;
+  bff_mode: boolean;
+}
+
+interface SimpleUser {
+  sub?: string;
+  email?: string;
+  name?: string;
 }
 
 interface AuthContextValue {
   enabled: boolean;
-  user: User | null;
+  user: User | SimpleUser | null;
   loading: boolean;
   error: string | null;
   login: () => void;
@@ -37,6 +46,7 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 let userManager: UserManager | null = null;
+let bffMode = false;
 let appBasename = "/";
 
 function buildUserManager(config: AuthConfig, basename: string): UserManager {
@@ -56,10 +66,10 @@ function buildUserManager(config: AuthConfig, basename: string): UserManager {
 
 export function AuthProvider({ children, basename = "/" }: { children: ReactNode; basename?: string }) {
   appBasename = basename;
-  const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | SimpleUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,34 +84,45 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
         }
 
         setEnabled(true);
-        userManager = buildUserManager(config, appBasename);
+        bffMode = config.bff_mode;
 
-        const cleanBase = appBasename === "/" ? "" : appBasename;
-        const callbackPath = `${cleanBase}/oauth2/callback`;
-        const homePath = `${cleanBase}/`;
-
-        // Handle the OIDC redirect callback
-        if (window.location.pathname === callbackPath) {
-          try {
-            await userManager.signinRedirectCallback();
-            // Force full page reload at the home URL — clean state, React Router picks up new path
-            window.location.replace(homePath);
-            return;
-          } catch (e) {
-            console.error("OIDC callback failed", e);
-            setError(e instanceof Error ? e.message : String(e));
+        if (bffMode) {
+          // Backend handles OAuth — just check if we have a session
+          const meResp = await fetch("/api/auth/me");
+          if (meResp.ok) {
+            const me = await meResp.json();
+            if (me.authenticated) {
+              setUser({ sub: me.sub, email: me.email, name: me.name });
+            }
           }
         } else {
-          const u = await userManager.getUser();
-          setUser(u && !u.expired ? u : null);
-        }
+          // SPA PKCE flow
+          userManager = buildUserManager(config, appBasename);
+          const cleanBase = appBasename === "/" ? "" : appBasename;
+          const callbackPath = `${cleanBase}/oauth2/callback`;
+          const homePath = `${cleanBase}/`;
 
-        // React to silent renew
-        userManager.events.addUserLoaded((u) => setUser(u));
-        userManager.events.addUserUnloaded(() => setUser(null));
-        userManager.events.addAccessTokenExpired(() => setUser(null));
+          if (window.location.pathname === callbackPath) {
+            try {
+              await userManager.signinRedirectCallback();
+              window.location.replace(homePath);
+              return;
+            } catch (e) {
+              console.error("OIDC callback failed", e);
+              setError(e instanceof Error ? e.message : String(e));
+            }
+          } else {
+            const u = await userManager.getUser();
+            setUser(u && !u.expired ? u : null);
+          }
+
+          userManager.events.addUserLoaded((u) => setUser(u));
+          userManager.events.addUserUnloaded(() => setUser(null));
+          userManager.events.addAccessTokenExpired(() => setUser(null));
+        }
       } catch (e) {
         console.error("Auth init failed", e);
+        setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
       }
@@ -109,24 +130,29 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
   }, []);
 
   const login = () => {
-    if (userManager) userManager.signinRedirect();
+    if (bffMode) {
+      window.location.href = "/api/auth/login";
+    } else if (userManager) {
+      userManager.signinRedirect();
+    }
   };
 
   const logout = () => {
-    if (userManager) userManager.signoutRedirect();
+    if (bffMode) {
+      fetch("/api/auth/logout", { method: "POST" }).then(() => {
+        setUser(null);
+        window.location.href = "/";
+      });
+    } else if (userManager) {
+      userManager.signoutRedirect();
+    }
   };
+
+  const token = bffMode ? null : (user as User | null)?.access_token ?? null;
 
   return (
     <AuthContext.Provider
-      value={{
-        enabled,
-        user,
-        loading,
-        error,
-        login,
-        logout,
-        token: user?.access_token ?? null,
-      }}
+      value={{ enabled, user, loading, error, login, logout, token }}
     >
       {children}
     </AuthContext.Provider>
@@ -138,10 +164,14 @@ export function useAuth() {
 }
 
 /**
- * Drop-in fetch replacement that adds the Bearer token when OIDC is enabled.
- * Falls back to plain fetch when auth is disabled.
+ * Drop-in fetch replacement.
+ * - BFF mode: include cookies (credentials: 'include').
+ * - PKCE mode: add Bearer token from oidc-client-ts.
  */
 export async function authFetch(input: RequestInfo, init: RequestInit = {}): Promise<Response> {
+  if (bffMode) {
+    return fetch(input, { ...init, credentials: "include" });
+  }
   if (userManager) {
     const u = await userManager.getUser();
     if (u && !u.expired) {

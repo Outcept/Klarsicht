@@ -97,13 +97,142 @@ async def _run_and_store(incident_id: UUID, alert: Alert) -> None:
 
 @app.get("/auth/config")
 async def auth_config():
-    """Public OIDC config the dashboard reads at runtime to set up PKCE flow."""
+    """Public OIDC config the dashboard reads at runtime."""
     return {
         "enabled": settings.auth_enabled,
         "issuer_url": settings.oidc_issuer_url,
         "client_id": settings.oidc_client_id,
         "scopes": settings.oidc_scopes,
+        # When client_secret is set, the backend handles the OAuth flow (BFF mode)
+        # When empty, the SPA does PKCE itself
+        "bff_mode": bool(settings.oidc_client_secret),
     }
+
+
+def _public_url(request: Request, path: str) -> str:
+    """Build a fully-qualified URL for the request, honouring proxy headers."""
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    return f"{scheme}://{host}{path}"
+
+
+@app.get("/auth/login")
+async def auth_login(request: Request):
+    """Start the OIDC login flow (BFF mode, server-side)."""
+    if not settings.auth_enabled:
+        raise HTTPException(status_code=400, detail="Auth not enabled")
+
+    import secrets
+    from urllib.parse import urlencode
+    from fastapi.responses import RedirectResponse
+    from app.auth import get_oidc_config
+
+    config = get_oidc_config()
+    state = secrets.token_urlsafe(32)
+    redirect_uri = _public_url(request, "/oauth2/callback")
+
+    params = {
+        "client_id": settings.oidc_client_id,
+        "response_type": "code",
+        "scope": settings.oidc_scopes,
+        "redirect_uri": redirect_uri,
+        "state": state,
+    }
+    auth_url = f"{config['authorization_endpoint']}?{urlencode(params)}"
+
+    response = RedirectResponse(auth_url, status_code=302)
+    response.set_cookie("oidc_state", state, httponly=True, secure=True, samesite="lax", max_age=600)
+    response.set_cookie("oidc_redirect", redirect_uri, httponly=True, secure=True, samesite="lax", max_age=600)
+    return response
+
+
+@app.get("/oauth2/callback")
+async def oauth2_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    """OIDC callback — exchange code for token, set session cookie, redirect home."""
+    from fastapi.responses import RedirectResponse
+    from app.auth import get_oidc_config, decode_token, sign_session, SESSION_COOKIE, SESSION_TTL
+
+    if error:
+        raise HTTPException(status_code=400, detail=f"OIDC error: {error}")
+
+    saved_state = request.cookies.get("oidc_state")
+    if not saved_state or saved_state != state:
+        raise HTTPException(status_code=400, detail="Invalid state")
+
+    redirect_uri = request.cookies.get("oidc_redirect") or _public_url(request, "/oauth2/callback")
+    config = get_oidc_config()
+
+    # Exchange code for tokens
+    token_resp = http_requests.post(
+        config["token_endpoint"],
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": settings.oidc_client_id,
+            "client_secret": settings.oidc_client_secret,
+        },
+        timeout=10,
+    )
+    if token_resp.status_code != 200:
+        logger.error("Token exchange failed: %s %s", token_resp.status_code, token_resp.text)
+        raise HTTPException(status_code=400, detail=f"Token exchange failed: {token_resp.text}")
+
+    tokens = token_resp.json()
+    id_token = tokens.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="No id_token in response")
+
+    # Validate the ID token signature
+    try:
+        claims = decode_token(id_token)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid id_token: {e}")
+
+    session_jwt = sign_session(claims)
+    home_url = _public_url(request, "/")
+
+    response = RedirectResponse(home_url, status_code=302)
+    response.set_cookie(
+        SESSION_COOKIE, session_jwt,
+        httponly=True, secure=True, samesite="lax", max_age=SESSION_TTL,
+    )
+    response.delete_cookie("oidc_state")
+    response.delete_cookie("oidc_redirect")
+    return response
+
+
+@app.get("/auth/me")
+async def auth_me(request: Request):
+    """Return the current user from the session cookie."""
+    from app.auth import verify_session, SESSION_COOKIE
+    if not settings.auth_enabled:
+        return {"authenticated": False, "auth_disabled": True}
+
+    session_token = request.cookies.get(SESSION_COOKIE)
+    if not session_token:
+        return {"authenticated": False}
+    claims = verify_session(session_token)
+    if claims is None:
+        return {"authenticated": False}
+
+    return {
+        "authenticated": True,
+        "sub": claims.get("sub"),
+        "email": claims.get("email"),
+        "name": claims.get("name"),
+        "claims": claims,
+    }
+
+
+@app.post("/auth/logout")
+async def auth_logout():
+    """Clear the session cookie."""
+    from fastapi.responses import JSONResponse
+    from app.auth import SESSION_COOKIE
+    response = JSONResponse({"status": "ok"})
+    response.delete_cookie(SESSION_COOKIE)
+    return response
 
 
 @app.get("/healthz")
