@@ -326,8 +326,19 @@ def _forward_to_peers(body: bytes) -> None:
 
 
 @app.post("/test")
-async def send_test_alert(request: Request):
-    """Send a mock CrashLoopBackOff alert through the full pipeline."""
+async def send_test_alert(request: Request, user: AuthUser | None = Depends(get_current_user)):
+    """Send a mock CrashLoopBackOff alert through the full pipeline.
+
+    When auth is enabled, injects the calling user's allowed labels
+    into the test alert so the user can actually see the result.
+    """
+    # Inject user's labels so they pass the auth filter
+    extra_labels: dict[str, str] = {}
+    if user and not user.is_admin:
+        for label_key, allowed_values in user.allowed_label_values.items():
+            if allowed_values:
+                extra_labels[label_key] = allowed_values[0]
+
     now = datetime.now(timezone.utc).isoformat()
     mock_payload = GrafanaWebhookPayload(
         receiver="klarsicht-test",
@@ -340,6 +351,7 @@ async def send_test_alert(request: Request):
                     "namespace": "demo",
                     "pod": "test-crashloop-" + uuid4().hex[:5],
                     "severity": "critical",
+                    **extra_labels,
                 },
                 annotations={
                     "summary": "Pod is crash looping — missing DATABASE_URL environment variable",
