@@ -168,16 +168,16 @@ async def oauth2_callback(request: Request, code: str = "", state: str = "", err
     redirect_uri = request.cookies.get("oidc_redirect") or _public_url(request, "/oauth2/callback")
     config = get_oidc_config()
 
-    # Exchange code for tokens
+    # Exchange code for tokens — use HTTP Basic auth (client_secret_basic),
+    # which is the most common default required by OIDC providers like Ping.
     token_resp = http_requests.post(
         config["token_endpoint"],
         data={
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
-            "client_id": settings.oidc_client_id,
-            "client_secret": settings.oidc_client_secret,
         },
+        auth=(settings.oidc_client_id, settings.oidc_client_secret),
         timeout=10,
     )
     if token_resp.status_code != 200:
