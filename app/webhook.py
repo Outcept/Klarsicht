@@ -327,7 +327,7 @@ async def readyz():
             await pool.fetchval("SELECT 1")
             services.append({"name": "postgres", "status": "ok"})
         except Exception as e:
-            services.append({"name": "postgres", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "postgres", "status": "error", "error": str(e)})
     else:
         services.append({"name": "postgres", "status": "disabled"})
 
@@ -337,7 +337,7 @@ async def readyz():
         _build_llm()
         services.append({"name": f"llm:{settings.llm_provider}", "status": "ok"})
     except Exception as e:
-        services.append({"name": f"llm:{settings.llm_provider}", "status": "error", "error": str(e)[:200]})
+        services.append({"name": f"llm:{settings.llm_provider}", "status": "error", "error": str(e)})
 
     # K8s API (only when this instance has K8s access)
     if not settings.is_backend:
@@ -346,7 +346,7 @@ async def readyz():
             _v1().list_namespace(limit=1, _request_timeout=3)
             services.append({"name": "kubernetes", "status": "ok"})
         except Exception as e:
-            services.append({"name": "kubernetes", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "kubernetes", "status": "error", "error": str(e)})
 
     # Mimir / Prometheus
     if settings.mimir_endpoint:
@@ -355,7 +355,7 @@ async def readyz():
             services.append({"name": "mimir", "status": "ok" if r.ok else "error",
                              **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
         except Exception as e:
-            services.append({"name": "mimir", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "mimir", "status": "error", "error": str(e)})
 
     # OIDC issuer
     if settings.auth_enabled and settings.oidc_issuer_url:
@@ -367,7 +367,7 @@ async def readyz():
             services.append({"name": "oidc", "status": "ok" if r.ok else "error",
                              **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
         except Exception as e:
-            services.append({"name": "oidc", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "oidc", "status": "error", "error": str(e)})
 
     # Confluence
     if settings.confluence_url:
@@ -380,7 +380,7 @@ async def readyz():
             services.append({"name": "confluence", "status": "ok" if r.ok else "error",
                              **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
         except Exception as e:
-            services.append({"name": "confluence", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "confluence", "status": "error", "error": str(e)})
 
     # GitLab
     if settings.gitlab_url and settings.gitlab_token:
@@ -392,7 +392,7 @@ async def readyz():
             services.append({"name": "gitlab", "status": "ok" if r.ok else "error",
                              **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
         except Exception as e:
-            services.append({"name": "gitlab", "status": "error", "error": str(e)[:200]})
+            services.append({"name": "gitlab", "status": "error", "error": str(e)})
 
     overall = "ok" if all(s["status"] in ("ok", "disabled") for s in services) else "degraded"
     status_code = 200 if overall == "ok" else 503

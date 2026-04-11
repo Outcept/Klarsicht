@@ -12,6 +12,68 @@ interface ReadyResponse {
   services: ServiceStatus[];
 }
 
+function ServiceRow({ svc }: { svc: ServiceStatus }) {
+  const [open, setOpen] = useState(false);
+  const hasError = svc.status === "error" && Boolean(svc.error);
+
+  return (
+    <div className="rounded border border-white/[0.05]">
+      <button
+        type="button"
+        onClick={() => hasError && setOpen(!open)}
+        disabled={!hasError}
+        className={`w-full flex items-center justify-between px-3 py-2 text-left ${
+          hasError ? "hover:bg-white/[0.02] cursor-pointer" : "cursor-default"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              svc.status === "ok"
+                ? "bg-[#22c55e]"
+                : svc.status === "error"
+                ? "bg-red-500"
+                : "bg-[#555]"
+            }`}
+          />
+          <span className="text-sm font-mono text-white/90">{svc.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-medium ${
+              svc.status === "ok"
+                ? "text-[#22c55e]"
+                : svc.status === "error"
+                ? "text-red-400"
+                : "text-[#555]"
+            }`}
+          >
+            {svc.status}
+          </span>
+          {hasError && (
+            <svg
+              className={`h-3 w-3 text-[#666] transition-transform ${open ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
+      </button>
+      {open && hasError && (
+        <div className="border-t border-white/[0.05] px-3 py-2 bg-white/[0.01]">
+          <pre className="text-xs text-red-300/80 font-mono whitespace-pre-wrap break-all">
+            {svc.error}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const [config, setConfig] = useState<Record<string, unknown> | null>(null);
   const [ready, setReady] = useState<ReadyResponse | null>(null);
@@ -78,39 +140,7 @@ export default function Admin() {
 
         <div className="space-y-2">
           {ready?.services.map((svc) => (
-            <div
-              key={svc.name}
-              className="flex items-center justify-between rounded border border-white/[0.05] px-3 py-2"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    svc.status === "ok"
-                      ? "bg-[#22c55e]"
-                      : svc.status === "error"
-                      ? "bg-red-500"
-                      : "bg-[#555]"
-                  }`}
-                />
-                <span className="text-sm font-mono text-white/90">{svc.name}</span>
-              </div>
-              <div className="text-right">
-                <span
-                  className={`text-xs font-medium ${
-                    svc.status === "ok"
-                      ? "text-[#22c55e]"
-                      : svc.status === "error"
-                      ? "text-red-400"
-                      : "text-[#555]"
-                  }`}
-                >
-                  {svc.status}
-                </span>
-                {svc.error && (
-                  <p className="text-xs text-red-300/70 font-mono mt-1 max-w-md truncate">{svc.error}</p>
-                )}
-              </div>
-            </div>
+            <ServiceRow key={svc.name} svc={svc} />
           ))}
         </div>
       </section>

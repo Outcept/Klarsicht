@@ -16,6 +16,7 @@ dependencies = [
     "langchain-core>=0.3.0",
     "asyncpg>=0.30.0",
     "python-jose[cryptography]>=3.3.0",
+    "langchain-ibm>=0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -23,9 +24,6 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.25.0",
     "httpx>=0.28.0",
-]
-watsonx = [
-    "langchain-ibm>=0.3.0",
 ]
 
 [tool.setuptools.packages.find]
