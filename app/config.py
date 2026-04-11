@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = ""  # ollama/custom/watsonx: http://ollama:11434/v1 or internal watsonx URL
     watsonx_project_id: str = ""  # watsonx only: IBM project ID
+    watsonx_username: str = ""  # watsonx CP4D only: username (if not using IAM)
+    watsonx_password: str = ""  # watsonx CP4D only: password
+    watsonx_instance_id: str = ""  # watsonx CP4D only: instance ID
     llm_profile: str = "auto"  # auto, full, compact — compact for small models (<30B)
     llm_max_tool_calls: int = 0  # 0 = auto (full: 20, compact: 8)
     database_url: str = ""

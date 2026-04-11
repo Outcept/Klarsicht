@@ -47,6 +47,21 @@ spec:
             - name: KLARSICHT_WATSONX_PROJECT_ID
               value: {{ .Values.agent.watsonxProjectId | quote }}
             {{- end }}
+            {{- if .Values.agent.watsonxUsername }}
+            - name: KLARSICHT_WATSONX_USERNAME
+              value: {{ .Values.agent.watsonxUsername | quote }}
+            {{- end }}
+            {{- if .Values.agent.watsonxPassword }}
+            - name: KLARSICHT_WATSONX_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: watsonx-password
+            {{- end }}
+            {{- if .Values.agent.watsonxInstanceId }}
+            - name: KLARSICHT_WATSONX_INSTANCE_ID
+              value: {{ .Values.agent.watsonxInstanceId | quote }}
+            {{- end }}
             - name: KLARSICHT_LLM_PROFILE
               value: {{ .Values.agent.llmProfile | default "auto" | quote }}
             {{- if .Values.agent.llmMaxToolCalls }}

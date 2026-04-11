@@ -41,6 +41,9 @@ agent:
   llmApiKey: ""              # from secret ref (not needed for ollama)
   llmBaseUrl: ""             # ollama/custom/watsonx: http://ollama:11434/v1 or internal watsonx URL
   watsonxProjectId: ""       # watsonx only: IBM project ID
+  watsonxUsername: ""        # watsonx CP4D only (if not using IAM api key)
+  watsonxPassword: ""        # watsonx CP4D only
+  watsonxInstanceId: ""      # watsonx CP4D only
   llmProfile: auto           # auto, full, compact — compact for small models (<30B)
   llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
   podLabels: {}               # extra labels on agent pods only

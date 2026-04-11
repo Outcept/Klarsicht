@@ -74,12 +74,18 @@ def _build_llm() -> BaseChatModel:
             "max_tokens": 4096,
         }
         if settings.llm_base_url:
-            # Internal/custom watsonx endpoint
             kwargs["url"] = settings.llm_base_url
         if settings.llm_api_key:
             kwargs["apikey"] = settings.llm_api_key
         if settings.watsonx_project_id:
             kwargs["project_id"] = settings.watsonx_project_id
+        # CP4D / on-prem auth
+        if settings.watsonx_username:
+            kwargs["username"] = settings.watsonx_username
+        if settings.watsonx_password:
+            kwargs["password"] = settings.watsonx_password
+        if settings.watsonx_instance_id:
+            kwargs["instance_id"] = settings.watsonx_instance_id
         return ChatWatsonx(**kwargs)
 
     raise ValueError(f"Unknown LLM provider: {provider}. Use: anthropic, openai, ollama, watsonx")
