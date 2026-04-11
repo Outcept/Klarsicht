@@ -73,10 +73,13 @@ function ProtectedApp() {
   );
 }
 
+// Detect basename from URL — supports both /app/ (with landing) and / (no landing)
+const BASENAME = window.location.pathname.startsWith("/app") ? "/app" : "/";
+
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter basename="/app">
+    <AuthProvider basename={BASENAME}>
+      <BrowserRouter basename={BASENAME}>
         <ProtectedApp />
       </BrowserRouter>
     </AuthProvider>

@@ -35,13 +35,15 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 let userManager: UserManager | null = null;
+let appBasename = "/";
 
-function buildUserManager(config: AuthConfig): UserManager {
+function buildUserManager(config: AuthConfig, basename: string): UserManager {
+  const cleanBase = basename === "/" ? "" : basename;
   return new UserManager({
     authority: config.issuer_url,
     client_id: config.client_id,
-    redirect_uri: `${window.location.origin}/app/callback`,
-    post_logout_redirect_uri: `${window.location.origin}/app/`,
+    redirect_uri: `${window.location.origin}${cleanBase}/callback`,
+    post_logout_redirect_uri: `${window.location.origin}${cleanBase}/`,
     response_type: "code",
     scope: config.scopes || "openid profile email",
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
@@ -50,7 +52,8 @@ function buildUserManager(config: AuthConfig): UserManager {
   });
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children, basename = "/" }: { children: ReactNode; basename?: string }) {
+  appBasename = basename;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
@@ -68,14 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setEnabled(true);
-        userManager = buildUserManager(config);
+        userManager = buildUserManager(config, appBasename);
+
+        const cleanBase = appBasename === "/" ? "" : appBasename;
+        const callbackPath = `${cleanBase}/callback`;
+        const homePath = `${cleanBase}/`;
 
         // Handle the OIDC redirect callback
-        if (window.location.pathname === "/app/callback") {
+        if (window.location.pathname === callbackPath) {
           try {
             const u = await userManager.signinRedirectCallback();
             setUser(u);
-            window.history.replaceState({}, document.title, "/app/");
+            window.history.replaceState({}, document.title, homePath);
           } catch (e) {
             console.error("OIDC callback failed", e);
           }
