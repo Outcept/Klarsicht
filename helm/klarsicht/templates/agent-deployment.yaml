@@ -131,6 +131,10 @@ spec:
                   name: {{ include "klarsicht.agent.secretName" . }}
                   key: oidc-client-secret
             {{- end }}
+            {{- if .Values.dashboard.oidc.scopes }}
+            - name: KLARSICHT_OIDC_SCOPES
+              value: {{ .Values.dashboard.oidc.scopes | quote }}
+            {{- end }}
             {{- if .Values.dashboard.oidc.claimMapping }}
             - name: KLARSICHT_AUTH_CLAIM_MAPPING
               value: {{ .Values.dashboard.oidc.claimMapping | quote }}

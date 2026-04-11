@@ -73,6 +73,7 @@ dashboard:
     issuerUrl: ""             # https://login.microsoftonline.com/{tenant}/v2.0
     clientId: ""
     clientSecret: ""
+    scopes: "openid profile email"   # space-separated OIDC scopes
     claimMapping: ""          # JSON: {"department": "team"}
     teamMappings: ""          # JSON: {"XY-Z": ["XY-Z1", "XY-Z2"]}
     adminTeams: ""            # comma-separated: sre,admin
