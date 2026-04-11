@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs'
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
 export default defineConfig({
-  base: '/app/',
+  // Relative base — works whether SPA is served at /app/ or / (depending on landing.enabled)
+  base: './',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
