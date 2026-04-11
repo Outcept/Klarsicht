@@ -61,6 +61,23 @@ def verify_hmac_signature(body: bytes, signature: str, secret: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
+def verify_webhook_basic_auth(authorization: str | None) -> bool:
+    """Verify HTTP Basic Auth header against configured webhook credentials."""
+    expected_user = settings.webhook_basic_auth_user
+    expected_pass = settings.webhook_basic_auth_password
+    if not expected_user:
+        return True  # not configured
+    if not authorization or not authorization.lower().startswith("basic "):
+        return False
+    import base64
+    try:
+        decoded = base64.b64decode(authorization[6:]).decode()
+        user, _, password = decoded.partition(":")
+    except Exception:
+        return False
+    return hmac.compare_digest(user, expected_user) and hmac.compare_digest(password, expected_pass)
+
+
 def _notify(result: RCAResult) -> None:
     """Send RCA result to all configured notification channels."""
     url = settings.dashboard_url
@@ -387,6 +404,7 @@ async def readyz():
 async def receive_alert(
     request: Request,
     x_grafana_alerting_signature: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ):
     body = await request.body()
 
@@ -395,6 +413,14 @@ async def receive_alert(
             raise HTTPException(status_code=401, detail="Missing signature header")
         if not verify_hmac_signature(body, x_grafana_alerting_signature, settings.webhook_secret):
             raise HTTPException(status_code=401, detail="Invalid signature")
+
+    if settings.webhook_basic_auth_user:
+        if not verify_webhook_basic_auth(authorization):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid webhook credentials",
+                headers={"WWW-Authenticate": 'Basic realm="Klarsicht webhook"'},
+            )
 
     try:
         payload = GrafanaWebhookPayload.model_validate_json(body)

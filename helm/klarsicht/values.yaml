@@ -117,6 +117,9 @@ postgres:
 grafana:
   webhookPath: /alert
   webhookSecret: ""          # HMAC shared secret
+  basicAuth:
+    username: ""             # set to enable HTTP Basic Auth on /alert
+    password: ""
 
 # GitLab integration (read-only: pipelines, MRs, deployments, code)
 gitlab:

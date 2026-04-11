@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     webhook_secret: str = ""
+    webhook_basic_auth_user: str = ""  # optional HTTP Basic Auth on /alert
+    webhook_basic_auth_password: str = ""
     mimir_endpoint: str = ""  # Prometheus: http://prometheus:9090, Mimir: http://mimir:9009/prometheus
     watch_namespaces: str = ""  # comma-separated list of namespaces, empty = all
     llm_provider: str = "anthropic"  # anthropic, openai, ollama, watsonx

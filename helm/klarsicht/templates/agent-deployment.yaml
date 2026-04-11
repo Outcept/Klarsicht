@@ -63,6 +63,15 @@ spec:
                 secretKeyRef:
                   name: {{ include "klarsicht.agent.secretName" . }}
                   key: webhook-secret
+            {{- if .Values.grafana.basicAuth.username }}
+            - name: KLARSICHT_WEBHOOK_BASIC_AUTH_USER
+              value: {{ .Values.grafana.basicAuth.username | quote }}
+            - name: KLARSICHT_WEBHOOK_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "klarsicht.agent.secretName" . }}
+                  key: webhook-basic-auth-password
+            {{- end }}
             {{- if .Values.agent.metricsEndpoint }}
             - name: KLARSICHT_MIMIR_ENDPOINT
               value: {{ .Values.agent.metricsEndpoint | quote }}
