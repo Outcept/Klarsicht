@@ -19,6 +19,7 @@ def reset_auth(monkeypatch):
 
 def test_resolve_user_basic(monkeypatch):
     monkeypatch.setattr(settings, "auth_claim_mapping", '{"department": "team"}')
+    monkeypatch.setattr(settings, "auth_admin_teams", "sre")
 
     user = resolve_user({"sub": "user1", "department": "checkout"})
     assert user.sub == "user1"
@@ -29,6 +30,7 @@ def test_resolve_user_basic(monkeypatch):
 def test_resolve_user_with_team_mapping(monkeypatch):
     monkeypatch.setattr(settings, "auth_claim_mapping", '{"department": "team"}')
     monkeypatch.setattr(settings, "auth_team_mappings", '{"XY-Z": ["XY-Z1", "XY-Z2"]}')
+    monkeypatch.setattr(settings, "auth_admin_teams", "sre")
 
     user = resolve_user({"sub": "user2", "department": "XY-Z"})
     assert user.allowed_label_values == {"team": ["XY-Z1", "XY-Z2"]}
@@ -45,6 +47,7 @@ def test_resolve_user_admin(monkeypatch):
 
 def test_resolve_user_no_matching_claim(monkeypatch):
     monkeypatch.setattr(settings, "auth_claim_mapping", '{"department": "team"}')
+    monkeypatch.setattr(settings, "auth_admin_teams", "sre")
 
     user = resolve_user({"sub": "user3", "email": "user@example.com"})
     # No department claim → no allowed labels
@@ -54,9 +57,26 @@ def test_resolve_user_no_matching_claim(monkeypatch):
 
 def test_resolve_user_multiple_claim_mappings(monkeypatch):
     monkeypatch.setattr(settings, "auth_claim_mapping", '{"department": "team", "location": "region"}')
+    monkeypatch.setattr(settings, "auth_admin_teams", "sre")
 
     user = resolve_user({"sub": "user4", "department": "checkout", "location": "eu"})
     assert user.allowed_label_values == {"team": ["checkout"], "region": ["eu"]}
+
+
+def test_resolve_user_no_mapping_is_admin(monkeypatch):
+    """Empty claim_mapping → fail open, everyone admin."""
+    monkeypatch.setattr(settings, "auth_claim_mapping", "")
+    monkeypatch.setattr(settings, "auth_admin_teams", "sre")
+    user = resolve_user({"sub": "user5", "department": "anything"})
+    assert user.is_admin is True
+
+
+def test_resolve_user_no_admin_teams_is_admin(monkeypatch):
+    """Empty admin_teams → fail open, everyone admin."""
+    monkeypatch.setattr(settings, "auth_claim_mapping", '{"department": "team"}')
+    monkeypatch.setattr(settings, "auth_admin_teams", "")
+    user = resolve_user({"sub": "user6", "department": "anything"})
+    assert user.is_admin is True
 
 
 # --- filter_incidents ---
