@@ -121,8 +121,12 @@ def _fetch_jwks() -> dict[str, Any]:
     return _jwks_cache
 
 
-def decode_token(token: str) -> dict[str, Any]:
-    """Validate and decode a JWT token using the OIDC provider's JWKS."""
+def decode_token(token: str, access_token: str | None = None) -> dict[str, Any]:
+    """Validate and decode a JWT token using the OIDC provider's JWKS.
+
+    If the token is an ID token containing an at_hash claim, pass the
+    matching access_token so it can be verified.
+    """
     jwks = _fetch_jwks()
     unverified_header = jwt.get_unverified_header(token)
 
@@ -135,14 +139,19 @@ def decode_token(token: str) -> dict[str, Any]:
     if not rsa_key:
         raise HTTPException(status_code=401, detail="Unable to find signing key")
 
-    payload = jwt.decode(
-        token,
-        rsa_key,
-        algorithms=["RS256"],
-        audience=settings.oidc_client_id,
-        issuer=settings.oidc_issuer_url,
-    )
-    return payload
+    decode_kwargs: dict[str, Any] = {
+        "key": rsa_key,
+        "algorithms": ["RS256"],
+        "audience": settings.oidc_client_id,
+        "issuer": settings.oidc_issuer_url,
+    }
+    if access_token:
+        decode_kwargs["access_token"] = access_token
+    else:
+        # No access token to verify against → skip at_hash check
+        decode_kwargs["options"] = {"verify_at_hash": False}
+
+    return jwt.decode(token, **decode_kwargs)
 
 
 # --- User model ---

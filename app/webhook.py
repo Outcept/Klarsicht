@@ -186,12 +186,13 @@ async def oauth2_callback(request: Request, code: str = "", state: str = "", err
 
     tokens = token_resp.json()
     id_token = tokens.get("id_token")
+    access_token = tokens.get("access_token")
     if not id_token:
         raise HTTPException(status_code=400, detail="No id_token in response")
 
-    # Validate the ID token signature
+    # Validate the ID token signature (and at_hash against access_token if present)
     try:
-        claims = decode_token(id_token)
+        claims = decode_token(id_token, access_token=access_token)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid id_token: {e}")
 
