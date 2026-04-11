@@ -44,6 +44,12 @@ agent:
   llmProfile: auto           # auto, full, compact — compact for small models (<30B)
   llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
   podLabels: {}               # extra labels on agent pods only
+  # Extra env vars to inject (e.g. proxy config, custom CAs)
+  extraEnv: []
+  #  - name: NO_PROXY
+  #    value: ".internal.inventx.ch,.svc,.cluster.local,10.0.0.0/8"
+  #  - name: HTTPS_PROXY
+  #    value: "http://proxy.inventx.ch:8080"
   peerWebhookUrls: ""        # comma-separated peer URLs for alert fan-out + comparison
   # Multi-cluster
   mode: standalone            # standalone, backend, agent

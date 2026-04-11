@@ -188,6 +188,9 @@ spec:
             - name: KLARSICHT_BACKEND_URL
               value: {{ .Values.agent.backendUrl | quote }}
             {{- end }}
+            {{- with .Values.agent.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
