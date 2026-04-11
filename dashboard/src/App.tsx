@@ -5,10 +5,11 @@ import IncidentDetail from "./pages/IncidentDetail";
 import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 import { AuthProvider, useAuth } from "./auth";
 
 function Nav() {
-  const { enabled, user, logout } = useAuth();
+  const { enabled, user, isAdmin, logout } = useAuth();
   const link = "text-sm transition-colors";
   const active = "text-white";
   const inactive = "text-[#888] hover:text-white";
@@ -32,6 +33,11 @@ function Nav() {
           <NavLink to="/setup" className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
             Setup
           </NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => `${link} ${isActive ? active : inactive}`}>
+              Admin
+            </NavLink>
+          )}
           {enabled && user && (
             <button onClick={logout} className={`${link} ${inactive}`}>
               Sign out
@@ -44,7 +50,7 @@ function Nav() {
 }
 
 function ProtectedApp() {
-  const { enabled, user, loading } = useAuth();
+  const { enabled, user, isAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -66,6 +72,7 @@ function ProtectedApp() {
         <Route path="/incidents" element={<IncidentList />} />
         <Route path="/incidents/:id" element={<IncidentDetail />} />
         <Route path="/setup" element={<Setup />} />
+        {isAdmin && <Route path="/admin" element={<Admin />} />}
         <Route path="/oauth2/callback" element={<Overview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

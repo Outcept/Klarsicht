@@ -23,11 +23,13 @@ interface SimpleUser {
   sub?: string;
   email?: string;
   name?: string;
+  is_admin?: boolean;
 }
 
 interface AuthContextValue {
   enabled: boolean;
   user: User | SimpleUser | null;
+  isAdmin: boolean;
   loading: boolean;
   error: string | null;
   login: () => void;
@@ -38,6 +40,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   enabled: false,
   user: null,
+  isAdmin: false,
   loading: true,
   error: null,
   login: () => {},
@@ -92,7 +95,7 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
           if (meResp.ok) {
             const me = await meResp.json();
             if (me.authenticated) {
-              setUser({ sub: me.sub, email: me.email, name: me.name });
+              setUser({ sub: me.sub, email: me.email, name: me.name, is_admin: me.is_admin });
             }
           }
         } else {
@@ -149,10 +152,16 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
   };
 
   const token = bffMode ? null : (user as User | null)?.access_token ?? null;
+  // Auth disabled = everyone is admin. With auth: read flag from BFF, otherwise check oidc-client claims.
+  const isAdmin = !enabled
+    ? true
+    : bffMode
+    ? Boolean((user as SimpleUser | null)?.is_admin)
+    : false;
 
   return (
     <AuthContext.Provider
-      value={{ enabled, user, loading, error, login, logout, token }}
+      value={{ enabled, user, isAdmin, loading, error, login, logout, token }}
     >
       {children}
     </AuthContext.Provider>

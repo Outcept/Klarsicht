@@ -212,9 +212,9 @@ async def oauth2_callback(request: Request, code: str = "", state: str = "", err
 @app.get("/auth/me")
 async def auth_me(request: Request):
     """Return the current user from the session cookie."""
-    from app.auth import verify_session, SESSION_COOKIE
+    from app.auth import verify_session, resolve_user, SESSION_COOKIE
     if not settings.auth_enabled:
-        return {"authenticated": False, "auth_disabled": True}
+        return {"authenticated": True, "auth_disabled": True, "is_admin": True}
 
     session_token = request.cookies.get(SESSION_COOKIE)
     if not session_token:
@@ -223,12 +223,14 @@ async def auth_me(request: Request):
     if claims is None:
         return {"authenticated": False}
 
+    user = resolve_user(claims)
     return {
         "authenticated": True,
         "sub": claims.get("sub"),
         "email": claims.get("email"),
         "name": claims.get("name"),
-        "claims": claims,
+        "is_admin": user.is_admin,
+        "allowed_labels": user.allowed_label_values,
     }
 
 
@@ -245,6 +247,140 @@ async def auth_logout():
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+def _require_admin(user: AuthUser | None) -> None:
+    """Raise 403 if the user is not an admin (or auth disabled = always allowed)."""
+    if not settings.auth_enabled:
+        return
+    if user is None or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@app.get("/admin/config")
+async def admin_config(user: AuthUser | None = Depends(get_current_user)):
+    """Return the (sanitized) running config — admin only."""
+    _require_admin(user)
+    return {
+        "mode": settings.mode,
+        "cluster_name": settings.cluster_name,
+        "llm_provider": settings.llm_provider,
+        "llm_model": settings.llm_model,
+        "llm_profile": settings.llm_profile,
+        "llm_max_tool_calls": settings.llm_max_tool_calls,
+        "watch_namespaces": settings.watch_namespace_list,
+        "mimir_endpoint": settings.mimir_endpoint,
+        "database_url": _redact_url(settings.database_url),
+        "auth_enabled": settings.auth_enabled,
+        "oidc_issuer_url": settings.oidc_issuer_url,
+        "oidc_client_id": settings.oidc_client_id,
+        "oidc_scopes": settings.oidc_scopes,
+        "auth_claim_mapping": settings.auth_claim_mapping,
+        "auth_team_mappings": settings.auth_team_mappings,
+        "auth_admin_teams": settings.auth_admin_teams,
+        "confluence_url": settings.confluence_url,
+        "confluence_spaces": settings.confluence_space_list,
+        "gitlab_url": settings.gitlab_url,
+        "gitlab_project": settings.gitlab_project,
+        "teams_webhook_configured": bool(settings.teams_webhook_url),
+        "slack_webhook_configured": bool(settings.slack_webhook_url),
+        "discord_webhook_configured": bool(settings.discord_webhook_url),
+        "dashboard_url": settings.dashboard_url,
+    }
+
+
+def _redact_url(url: str) -> str:
+    """Strip credentials from a connection URL for safe display."""
+    if not url:
+        return ""
+    import re
+    return re.sub(r"://[^:]+:[^@]+@", "://***:***@", url)
+
+
+@app.get("/readyz")
+async def readyz():
+    """Readiness probe — checks all configured services and reports status."""
+    services: list[dict] = []
+
+    # Database
+    if _use_db:
+        try:
+            from app.db import _get_pool
+            pool = _get_pool()
+            await pool.fetchval("SELECT 1")
+            services.append({"name": "postgres", "status": "ok"})
+        except Exception as e:
+            services.append({"name": "postgres", "status": "error", "error": str(e)[:200]})
+    else:
+        services.append({"name": "postgres", "status": "disabled"})
+
+    # LLM provider — check that we can build the client
+    try:
+        from app.agent.rca_agent import _build_llm
+        _build_llm()
+        services.append({"name": f"llm:{settings.llm_provider}", "status": "ok"})
+    except Exception as e:
+        services.append({"name": f"llm:{settings.llm_provider}", "status": "error", "error": str(e)[:200]})
+
+    # K8s API (only when this instance has K8s access)
+    if not settings.is_backend:
+        try:
+            from app.tools.k8s import _v1
+            _v1().list_namespace(limit=1, _request_timeout=3)
+            services.append({"name": "kubernetes", "status": "ok"})
+        except Exception as e:
+            services.append({"name": "kubernetes", "status": "error", "error": str(e)[:200]})
+
+    # Mimir / Prometheus
+    if settings.mimir_endpoint:
+        try:
+            r = http_requests.get(settings.mimir_endpoint.rstrip("/") + "/api/v1/query", params={"query": "up"}, timeout=3)
+            services.append({"name": "mimir", "status": "ok" if r.ok else "error",
+                             **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
+        except Exception as e:
+            services.append({"name": "mimir", "status": "error", "error": str(e)[:200]})
+
+    # OIDC issuer
+    if settings.auth_enabled and settings.oidc_issuer_url:
+        try:
+            r = http_requests.get(
+                settings.oidc_issuer_url.rstrip("/") + "/.well-known/openid-configuration",
+                timeout=3,
+            )
+            services.append({"name": "oidc", "status": "ok" if r.ok else "error",
+                             **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
+        except Exception as e:
+            services.append({"name": "oidc", "status": "error", "error": str(e)[:200]})
+
+    # Confluence
+    if settings.confluence_url:
+        try:
+            from app.tools.confluence import _base_url, _headers, _auth
+            r = http_requests.get(
+                f"{_base_url()}/rest/api/space",
+                headers=_headers(), auth=_auth(), timeout=3, params={"limit": 1},
+            )
+            services.append({"name": "confluence", "status": "ok" if r.ok else "error",
+                             **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
+        except Exception as e:
+            services.append({"name": "confluence", "status": "error", "error": str(e)[:200]})
+
+    # GitLab
+    if settings.gitlab_url and settings.gitlab_token:
+        try:
+            r = http_requests.get(
+                f"{settings.gitlab_url.rstrip('/')}/api/v4/version",
+                headers={"PRIVATE-TOKEN": settings.gitlab_token}, timeout=3,
+            )
+            services.append({"name": "gitlab", "status": "ok" if r.ok else "error",
+                             **({"error": f"HTTP {r.status_code}"} if not r.ok else {})})
+        except Exception as e:
+            services.append({"name": "gitlab", "status": "error", "error": str(e)[:200]})
+
+    overall = "ok" if all(s["status"] in ("ok", "disabled") for s in services) else "degraded"
+    status_code = 200 if overall == "ok" else 503
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"status": overall, "services": services}, status_code=status_code)
 
 
 @app.post("/alert")
