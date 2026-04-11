@@ -20,6 +20,7 @@ interface AuthContextValue {
   enabled: boolean;
   user: User | null;
   loading: boolean;
+  error: string | null;
   login: () => void;
   logout: () => void;
   token: string | null;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextValue>({
   enabled: false,
   user: null,
   loading: true,
+  error: null,
   login: () => {},
   logout: () => {},
   token: null,
@@ -54,6 +56,7 @@ function buildUserManager(config: AuthConfig, basename: string): UserManager {
 
 export function AuthProvider({ children, basename = "/" }: { children: ReactNode; basename?: string }) {
   appBasename = basename;
+  const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
@@ -80,11 +83,13 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
         // Handle the OIDC redirect callback
         if (window.location.pathname === callbackPath) {
           try {
-            const u = await userManager.signinRedirectCallback();
-            setUser(u);
-            window.history.replaceState({}, document.title, homePath);
+            await userManager.signinRedirectCallback();
+            // Force full page reload at the home URL — clean state, React Router picks up new path
+            window.location.replace(homePath);
+            return;
           } catch (e) {
             console.error("OIDC callback failed", e);
+            setError(e instanceof Error ? e.message : String(e));
           }
         } else {
           const u = await userManager.getUser();
@@ -117,6 +122,7 @@ export function AuthProvider({ children, basename = "/" }: { children: ReactNode
         enabled,
         user,
         loading,
+        error,
         login,
         logout,
         token: user?.access_token ?? null,
