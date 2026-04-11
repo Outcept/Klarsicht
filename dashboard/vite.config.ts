@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs'
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
 export default defineConfig({
-  // Relative base — works whether SPA is served at /app/ or / (depending on landing.enabled)
-  base: './',
+  // Absolute root base — assets always at /assets/, works with React Router deep links
+  base: '/',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },

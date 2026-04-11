@@ -11,6 +11,14 @@ data:
         listen 80;
         server_name _;
 
+        # Dashboard assets — served from absolute /assets/ in both modes
+        location /assets/ {
+            root /usr/share/nginx/html;
+            access_log off;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
         {{- if .Values.landing.enabled }}
         # Landing page at root
         location = / {
@@ -29,24 +37,24 @@ data:
             return 302 /app/;
         }
 
-        # Dashboard app under /app/
+        # Dashboard SPA at /app/ — serves index.html for any /app/* path
         location /app/ {
             {{- if not .Values.dashboard.oidc.enabled }}
             auth_basic "Klarsicht Dashboard";
             auth_basic_user_file /etc/nginx/auth/.htpasswd;
             {{- end }}
             alias /usr/share/nginx/html/;
-            try_files $uri $uri/ /app/index.html;
+            try_files $uri /app/index.html;
         }
         {{- else }}
-        # No landing page — serve dashboard SPA at root
+        # No landing page — dashboard SPA at root, falls back to index.html for SPA routing
         location / {
             {{- if not .Values.dashboard.oidc.enabled }}
             auth_basic "Klarsicht Dashboard";
             auth_basic_user_file /etc/nginx/auth/.htpasswd;
             {{- end }}
             root /usr/share/nginx/html;
-            try_files $uri $uri/ /index.html;
+            try_files $uri /index.html;
         }
         {{- end }}
 
