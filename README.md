@@ -196,6 +196,12 @@ The agent automatically fetches relevant runbook sections during investigations.
 
 **Coming soon:** Loki, Tempo, ArgoCD, Cert-Manager, Cilium/Hubble, Flux, PagerDuty
 
+## Roadmap
+
+- **VM Support** (in development) — Root cause analysis for virtual machines. SSH-based inspection, syslog, systemd, disk and network diagnostics.
+- **Cloud Resources** — AWS, Azure, GCP resource health checks.
+- **Cross-Infrastructure** — Correlate incidents across K8s, VMs, and cloud.
+
 ## Test Results
 
 Tested across 154 incidents covering 10 failure categories:

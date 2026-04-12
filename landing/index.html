@@ -272,6 +272,7 @@
       <a href="#architecture" onclick="this.parentElement.classList.remove('open')">Architecture</a>
       <a href="#integrations" onclick="this.parentElement.classList.remove('open')">Integrations</a>
       <a href="#results" onclick="this.parentElement.classList.remove('open')">Results</a>
+      <a href="#roadmap" onclick="this.parentElement.classList.remove('open')">Roadmap</a>
       <a href="/docs/" onclick="this.parentElement.classList.remove('open')">Docs</a>
       <a href="/blog/" onclick="this.parentElement.classList.remove('open')">Blog</a>
       <a href="#install" onclick="this.parentElement.classList.remove('open')">Install</a>
@@ -644,6 +645,44 @@
         <div class="int-icon">&#9700;</div>
         <div class="int-name">Cilium / Hubble</div>
         <div class="int-desc">Network flow logs. Identify NetworkPolicy blocks and DNS failures.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Roadmap -->
+<section class="integrations" id="roadmap">
+  <div class="container">
+    <div class="fade-in">
+      <p class="label">Roadmap</p>
+      <h2 class="stitle">Where we're headed</h2>
+      <p class="sdesc">Klarsicht started with Kubernetes. But incidents don't stop at the cluster boundary.</p>
+    </div>
+
+    <div class="int-grid fade-in">
+      <div class="int-card int-soon" style="border-color: rgba(168,85,247,0.25); background: rgba(168,85,247,0.04);">
+        <div class="int-status"><span class="int-dot" style="background:#a855f7; box-shadow: 0 0 8px #a855f7;"></span> In development</div>
+        <div class="int-icon">&#128421;</div>
+        <div class="int-name">VM Support</div>
+        <div class="int-desc">Root cause analysis for virtual machines. SSH-based inspection, syslog analysis, systemd service checks, disk and network diagnostics.</div>
+      </div>
+      <div class="int-card int-soon">
+        <div class="int-status"><span class="int-dot int-dot-soon"></span> Planned</div>
+        <div class="int-icon">&#9729;</div>
+        <div class="int-name">Cloud Resources</div>
+        <div class="int-desc">AWS, Azure, GCP resource health checks. Load balancers, managed databases, DNS, IAM issues.</div>
+      </div>
+      <div class="int-card int-soon">
+        <div class="int-status"><span class="int-dot int-dot-soon"></span> Planned</div>
+        <div class="int-icon">&#128300;</div>
+        <div class="int-name">Log Aggregation</div>
+        <div class="int-desc">Loki, Elasticsearch, Splunk integration. Query logs across all infrastructure — not just Kubernetes.</div>
+      </div>
+      <div class="int-card int-soon">
+        <div class="int-status"><span class="int-dot int-dot-soon"></span> Planned</div>
+        <div class="int-icon">&#128279;</div>
+        <div class="int-name">Cross-Infrastructure</div>
+        <div class="int-desc">Correlate incidents across K8s, VMs, and cloud. One agent traces the root cause wherever it lives.</div>
       </div>
     </div>
   </div>
