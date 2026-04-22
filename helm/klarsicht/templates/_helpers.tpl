@@ -156,7 +156,11 @@ app.kubernetes.io/part-of: klarsicht
 ServiceAccount name
 */}}
 {{- define "klarsicht.serviceAccountName" -}}
+{{- if and (not .Values.serviceAccount.create) .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name }}
+{{- else }}
 {{- include "klarsicht.fullname" . }}
+{{- end }}
 {{- end }}
 
 {{/*

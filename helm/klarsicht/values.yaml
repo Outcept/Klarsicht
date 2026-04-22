@@ -28,6 +28,12 @@ emptyDirVolumes:
 imagePullSecrets: []
 #  - name: gitlab-registry
 
+# ServiceAccount — set create:false to reuse a pre-existing SA
+# (must already have the required read perms, or bind this chart's ClusterRole to it)
+serviceAccount:
+  create: true
+  name: ""                    # required when create:false; defaults to fullname when empty
+
 agent:
   image:
     repository: ghcr.io/outcept/klarsicht/agent
