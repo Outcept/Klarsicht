@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # In-memory fallback when no database_url is configured
 _memory_store: dict[str, RCAResult | None] = {}
 _memory_labels: dict[str, dict[str, str]] = {}
+_memory_errors: dict[str, str] = {}
 _use_db = bool(settings.database_url)
 
 
@@ -105,11 +106,22 @@ async def _run_and_store(incident_id: UUID, alert: Alert) -> None:
         # Post notifications
         _notify(result)
 
-    except Exception:
+    except Exception as e:
+        error_message = f"{type(e).__name__}: {e}"
         logger.exception("Investigation failed for incident %s", incident_id)
+
+        # Mark the live progress stream as failed so the detail view stops polling
+        # and can surface the error to the user.
+        from app.steps import get_progress
+        progress = get_progress(str(incident_id))
+        progress.add_step("Investigation failed", error_message, status="error")
+        progress.complete("failed")
+
         if _use_db:
             from app.db import mark_incident_failed
-            await mark_incident_failed(incident_id)
+            await mark_incident_failed(incident_id, error_message)
+        else:
+            _memory_errors[str(incident_id)] = error_message
 
 
 @app.get("/auth/config")
@@ -602,13 +614,18 @@ async def stats_endpoint():
                 "started_at": result.started_at.isoformat(),
             })
         else:
-            investigating += 1
+            if iid in _memory_errors:
+                failed += 1
+                status_value = "failed"
+            else:
+                investigating += 1
+                status_value = "investigating"
             recent.append({
                 "incident_id": iid,
                 "alert_name": "unknown",
                 "namespace": "unknown",
                 "pod": "unknown",
-                "status": "investigating",
+                "status": status_value,
                 "confidence": None,
                 "started_at": None,
             })
@@ -692,9 +709,14 @@ async def list_incidents_endpoint(user: AuthUser | None = Depends(get_current_us
     else:
         incidents = {
             iid: {
-                "status": "completed" if result is not None else "investigating",
+                "status": (
+                    "completed" if result is not None
+                    else "failed" if iid in _memory_errors
+                    else "investigating"
+                ),
                 "result": result.model_dump(mode="json") if result else None,
                 "labels": _memory_labels.get(iid, {}),
+                "error": _memory_errors.get(iid),
             }
             for iid, result in _memory_store.items()
         }
@@ -720,10 +742,16 @@ async def get_incident_endpoint(incident_id: str, user: AuthUser | None = Depend
 
     if incident_id not in _memory_store:
         raise HTTPException(status_code=404, detail="Incident not found")
+    result = _memory_store[incident_id]
     data = {
-        "status": "completed" if _memory_store[incident_id] is not None else "investigating",
-        "result": _memory_store[incident_id].model_dump(mode="json") if _memory_store[incident_id] else None,
+        "status": (
+            "completed" if result is not None
+            else "failed" if incident_id in _memory_errors
+            else "investigating"
+        ),
+        "result": result.model_dump(mode="json") if result else None,
         "labels": _memory_labels.get(incident_id, {}),
+        "error": _memory_errors.get(incident_id),
     }
     if not can_view_incident(data, user):
         raise HTTPException(status_code=403, detail="Access denied")

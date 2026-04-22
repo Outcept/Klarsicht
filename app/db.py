@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS incidents (
     started_at      TIMESTAMPTZ NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_message TEXT;
 
 CREATE TABLE IF NOT EXISTS rca_results (
     incident_id     UUID PRIMARY KEY REFERENCES incidents(id),
@@ -109,12 +110,13 @@ async def save_rca_result(incident_id: UUID, result: RCAResult) -> None:
             )
 
 
-async def mark_incident_failed(incident_id: UUID) -> None:
+async def mark_incident_failed(incident_id: UUID, error_message: str | None = None) -> None:
     """Mark an incident as failed if the investigation errors out."""
     pool = _get_pool()
     await pool.execute(
-        "UPDATE incidents SET status = 'failed' WHERE id = $1",
+        "UPDATE incidents SET status = 'failed', error_message = $2 WHERE id = $1",
         incident_id,
+        error_message,
     )
 
 
@@ -141,7 +143,8 @@ def _row_to_incident(row: asyncpg.Record) -> dict[str, Any]:
         ).model_dump(mode="json")
 
     labels = json.loads(row["labels"]) if row.get("labels") else {}
-    return {"status": status, "result": result, "labels": labels}
+    error = row["error_message"] if "error_message" in row.keys() else None
+    return {"status": status, "result": result, "labels": labels, "error": error}
 
 
 async def get_incident(incident_id: UUID) -> dict[str, Any] | None:
@@ -149,7 +152,7 @@ async def get_incident(incident_id: UUID) -> dict[str, Any] | None:
     pool = _get_pool()
     row = await pool.fetchrow(
         """
-        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at,
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at, i.error_message,
                r.investigated_at, r.root_cause, r.fix_steps, r.postmortem
         FROM incidents i
         LEFT JOIN rca_results r ON r.incident_id = i.id
@@ -167,7 +170,7 @@ async def list_incidents() -> dict[str, Any]:
     pool = _get_pool()
     rows = await pool.fetch(
         """
-        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at,
+        SELECT i.id, i.alert_name, i.namespace, i.pod, i.status, i.labels, i.started_at, i.error_message,
                r.investigated_at, r.root_cause, r.fix_steps, r.postmortem
         FROM incidents i
         LEFT JOIN rca_results r ON r.incident_id = i.id

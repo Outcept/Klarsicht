@@ -124,17 +124,16 @@ export default function IncidentList() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const isCompleted = status === "completed";
+  const { dot, text, label } =
+    status === "completed"
+      ? { dot: "bg-[#22c55e]", text: "text-[#22c55e]", label: "Resolved" }
+      : status === "failed"
+        ? { dot: "bg-red-500", text: "text-red-400", label: "Failed" }
+        : { dot: "bg-amber-400 animate-pulse", text: "text-amber-400", label: "Investigating" };
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isCompleted ? "bg-[#22c55e]" : "bg-amber-400 animate-pulse"
-        }`}
-      />
-      <span className={isCompleted ? "text-[#22c55e]" : "text-amber-400"}>
-        {isCompleted ? "Resolved" : "Investigating"}
-      </span>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className={text}>{label}</span>
     </span>
   );
 }

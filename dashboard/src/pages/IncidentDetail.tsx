@@ -165,6 +165,7 @@ export default function IncidentDetail() {
 
   const r = data.result;
   const isCompleted = data.status === "completed";
+  const isFailed = data.status === "failed";
 
   return (
     <Page>
@@ -210,7 +211,23 @@ export default function IncidentDetail() {
         )}
       </div>
 
-      {!r && !isCompleted && (
+      {isFailed && (
+        <div className="border border-red-500/20 bg-red-500/5 rounded-md p-6 mb-6">
+          <div className="flex items-center gap-2 text-red-400 text-sm mb-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            Investigation failed
+          </div>
+          {data.error ? (
+            <pre className="text-xs font-mono text-red-300/90 whitespace-pre-wrap break-all bg-black/30 rounded px-3 py-2 border border-red-500/10">
+              {data.error}
+            </pre>
+          ) : (
+            <p className="text-xs text-[#888]">No error details captured.</p>
+          )}
+        </div>
+      )}
+
+      {!r && !isCompleted && !isFailed && (
         <div className="border border-white/[0.08] rounded-md p-6">
           <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -381,13 +398,16 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const isCompleted = status === "completed";
+  const { dot, text, label } =
+    status === "completed"
+      ? { dot: "bg-[#22c55e]", text: "text-[#22c55e]", label: "Resolved" }
+      : status === "failed"
+        ? { dot: "bg-red-500", text: "text-red-400", label: "Failed" }
+        : { dot: "bg-amber-400 animate-pulse", text: "text-amber-400", label: "Investigating" };
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
-      <span className={`h-1.5 w-1.5 rounded-full ${isCompleted ? "bg-[#22c55e]" : "bg-amber-400 animate-pulse"}`} />
-      <span className={isCompleted ? "text-[#22c55e]" : "text-amber-400"}>
-        {isCompleted ? "Resolved" : "Investigating"}
-      </span>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className={text}>{label}</span>
     </span>
   );
 }

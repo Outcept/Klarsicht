@@ -35,8 +35,9 @@ export interface RCAResult {
 }
 
 export interface IncidentEntry {
-  status: "completed" | "investigating";
+  status: "completed" | "investigating" | "failed";
   result: RCAResult | null;
+  error?: string | null;
 }
 
 export type IncidentsResponse = Record<string, IncidentEntry>;
