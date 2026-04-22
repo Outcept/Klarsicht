@@ -22,6 +22,12 @@ def _ensure_config():
         return
     try:
         config.load_incluster_config()
+        # In-cluster the apiserver is always directly reachable via the pod
+        # network. Drop any inherited HTTPS_PROXY so urllib3 doesn't try to
+        # route kubernetes.default.svc through a corporate proxy.
+        cfg = client.Configuration.get_default_copy()
+        cfg.proxy = None
+        client.Configuration.set_default(cfg)
     except config.ConfigException:
         config.load_kube_config()
     _configured = True
