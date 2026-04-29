@@ -14,6 +14,46 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+function StepEntry({ step, isLast }: { step: InvestigationStep; isLast: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const isMultiline = step.detail.includes("\n");
+  const dotColor =
+    step.status === "done" ? "bg-[#22c55e]" :
+    step.status === "error" ? "bg-red-500" :
+    isLast ? "bg-amber-400 animate-pulse" : "bg-[#555]";
+  const titleColor =
+    step.status === "error" ? "text-red-400" :
+    step.status === "done" ? "text-white/90" : "text-white";
+
+  return (
+    <div className="relative">
+      <div className={`absolute -left-[calc(0.25rem+3px)] top-1.5 h-1.5 w-1.5 rounded-full ${dotColor}`} />
+      <p className={`text-sm font-medium ${titleColor}`}>{step.event}</p>
+      {step.detail && (
+        isMultiline ? (
+          <>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs text-[#888] hover:text-white mt-1 underline-offset-2 hover:underline"
+            >
+              {expanded ? "Hide details" : "Show details"}
+            </button>
+            {expanded && (
+              <pre className="text-xs font-mono text-[#888] whitespace-pre-wrap break-all bg-black/30 rounded px-3 py-2 mt-2 border border-white/[0.06]">
+                {step.detail}
+              </pre>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-[#555] font-mono mt-0.5 truncate" title={step.detail}>
+            {step.detail}
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
 function CopyButton({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
@@ -111,10 +151,10 @@ export default function IncidentDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Poll for steps and auto-refresh when investigating
+  // Always fetch steps once (so failed/completed incidents show their history),
+  // then keep polling only while the investigation is still running.
   useEffect(() => {
     if (!id || !data) return;
-    if (data.status !== "investigating") return;
 
     const poll = async () => {
       try {
@@ -129,9 +169,12 @@ export default function IncidentDetail() {
       } catch { /* ignore */ }
     };
 
-    poll(); // immediate first call
-    pollRef.current = setInterval(poll, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    poll(); // immediate first call (also covers the failed/completed case)
+
+    if (data.status === "investigating") {
+      pollRef.current = setInterval(poll, 3000);
+      return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    }
   }, [id, data?.status]);
 
   if (loading) {
@@ -227,35 +270,29 @@ export default function IncidentDetail() {
         </div>
       )}
 
-      {!r && !isCompleted && !isFailed && (
-        <div className="border border-white/[0.08] rounded-md p-6">
-          <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            Investigation in progress
-          </div>
+      {(isFailed || (!r && !isCompleted)) && (
+        <div className="border border-white/[0.08] rounded-md p-6 mb-6">
+          {!isFailed && (
+            <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              Investigation in progress
+            </div>
+          )}
+          {isFailed && (
+            <div className="text-xs font-medium text-[#888] uppercase tracking-wider mb-4">
+              Steps before failure
+            </div>
+          )}
           {steps.length > 0 ? (
             <div className="relative pl-4 border-l border-white/[0.08] space-y-3">
               {steps.map((step, i) => (
-                <div key={i} className="relative">
-                  <div className={`absolute -left-[calc(0.25rem+3px)] top-1.5 h-1.5 w-1.5 rounded-full ${
-                    step.status === "done" ? "bg-[#22c55e]" :
-                    step.status === "error" ? "bg-red-500" :
-                    i === steps.length - 1 ? "bg-amber-400 animate-pulse" : "bg-[#555]"
-                  }`} />
-                  <p className={`text-sm font-medium ${
-                    step.status === "error" ? "text-red-400" :
-                    step.status === "done" ? "text-white/90" : "text-white"
-                  }`}>
-                    {step.event}
-                  </p>
-                  {step.detail && (
-                    <p className="text-xs text-[#555] font-mono mt-0.5 truncate">{step.detail}</p>
-                  )}
-                </div>
+                <StepEntry key={i} step={step} isLast={i === steps.length - 1} />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#888]">Waiting for agent to start...</p>
+            <p className="text-xs text-[#888]">
+              {isFailed ? "No step history available." : "Waiting for agent to start..."}
+            </p>
           )}
         </div>
       )}

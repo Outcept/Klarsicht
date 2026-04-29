@@ -110,14 +110,17 @@ async def _run_and_store(incident_id: UUID, alert: Alert) -> None:
         _notify(result)
 
     except Exception as e:
+        import traceback
         error_message = f"{type(e).__name__}: {e}"
+        full_trace = traceback.format_exc()
         logger.exception("Investigation failed for incident %s", incident_id)
 
         # Mark the live progress stream as failed so the detail view stops polling
-        # and can surface the error to the user.
+        # and can surface the error to the user. The full traceback goes in `detail`
+        # so the dashboard can show it under the failure step.
         from app.steps import get_progress
         progress = get_progress(str(incident_id))
-        progress.add_step("Investigation failed", error_message, status="error")
+        progress.add_step("Investigation failed", full_trace, status="error")
         progress.complete("failed")
 
         if _use_db:
