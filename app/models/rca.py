@@ -22,8 +22,10 @@ class FixStep(BaseModel):
 
 
 class TimelineEntry(BaseModel):
-    timestamp: datetime
-    event: str
+    # Free-form string — LLMs return varied formats (ISO, "approx 10:30",
+    # "T+5min"). Display only; never compared as a datetime.
+    timestamp: str = ""
+    event: str = ""
 
 
 class Postmortem(BaseModel):

@@ -217,11 +217,14 @@ def _build_rca_result(
     ]
 
     pm_data = agent_output.get("postmortem", {})
+    timeline = []
+    for t in pm_data.get("timeline", []):
+        if not isinstance(t, dict):
+            continue
+        ts = t.get("timestamp", "")
+        timeline.append(TimelineEntry(timestamp=str(ts) if ts else "", event=t.get("event", "")))
     postmortem = Postmortem(
-        timeline=[
-            TimelineEntry(timestamp=t["timestamp"], event=t["event"])
-            for t in pm_data.get("timeline", [])
-        ],
+        timeline=timeline,
         impact=pm_data.get("impact", ""),
         action_items=pm_data.get("action_items", []),
     )
