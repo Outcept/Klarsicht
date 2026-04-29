@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 _memory_store: dict[str, RCAResult | None] = {}
 _memory_labels: dict[str, dict[str, str]] = {}
 _memory_errors: dict[str, str] = {}
+_memory_alerts: dict[str, Alert] = {}
 _use_db = bool(settings.database_url)
 
 
@@ -480,10 +481,12 @@ async def receive_alert(
                 alert.labels.get("pod", "unknown"),
                 alert.startsAt,
                 labels=alert.labels,
+                alert_payload=alert.model_dump(mode="json"),
             )
         else:
             _memory_store[str(incident_id)] = None
             _memory_labels[str(incident_id)] = alert.labels
+            _memory_alerts[str(incident_id)] = alert
 
         asyncio.create_task(_run_and_store(incident_id, alert))
 
@@ -573,10 +576,12 @@ async def send_test_alert(request: Request, user: AuthUser | None = Depends(get_
                 alert.labels.get("pod", "unknown"),
                 alert.startsAt,
                 labels=alert.labels,
+                alert_payload=alert.model_dump(mode="json"),
             )
         else:
             _memory_store[str(incident_id)] = None
             _memory_labels[str(incident_id)] = alert.labels
+            _memory_alerts[str(incident_id)] = alert
 
         asyncio.create_task(_run_and_store(incident_id, alert))
 
@@ -793,6 +798,45 @@ async def get_incident_steps(incident_id: str):
 
     # Fall back to creating an empty progress object (matches old behaviour)
     return get_progress(incident_id).to_dict()
+
+
+@app.post("/incidents/{incident_id}/retry")
+async def retry_incident(incident_id: str, user: AuthUser | None = Depends(get_current_user)):
+    """Re-run the investigation for a finished (or failed) incident."""
+    try:
+        iid = UUID(incident_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid incident id")
+
+    # Recover the original Alert payload
+    alert: Alert | None = None
+    if _use_db:
+        from app.db import get_alert_payload, reset_incident_for_retry
+        payload = await get_alert_payload(iid)
+        if payload is None:
+            raise HTTPException(status_code=404, detail="No stored alert payload — incident pre-dates retry support")
+        try:
+            alert = Alert.model_validate(payload)
+        except ValidationError as e:
+            raise HTTPException(status_code=500, detail=f"Stored alert payload is invalid: {e}")
+        await reset_incident_for_retry(iid)
+    else:
+        alert = _memory_alerts.get(incident_id)
+        if alert is None:
+            raise HTTPException(status_code=404, detail="No stored alert payload for this incident")
+        _memory_store[incident_id] = None
+        _memory_errors.pop(incident_id, None)
+
+    # Authorization: same rule as viewing the incident
+    if user and not can_view_incident(user, alert.labels):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Reset the live step stream so the dashboard sees a clean run
+    from app.steps import _progress as _live_progress
+    _live_progress.pop(incident_id, None)
+
+    asyncio.create_task(_run_and_store(iid, alert))
+    return {"status": "retrying", "incident_id": incident_id}
 
 
 @app.get("/incidents/{incident_id}/stream")

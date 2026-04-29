@@ -26,3 +26,11 @@ export async function fetchSteps(id: string): Promise<InvestigationProgress> {
   if (!res.ok) throw new Error(`Failed to fetch steps: ${res.status}`);
   return res.json();
 }
+
+export async function retryIncident(id: string): Promise<void> {
+  const res = await authFetch(`${BASE}/incidents/${encodeURIComponent(id)}/retry`, { method: "POST" });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(detail || `Retry failed: ${res.status}`);
+  }
+}

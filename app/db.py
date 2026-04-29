@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_message TEXT;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS steps JSONB;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS alert_payload JSONB;
 
 CREATE TABLE IF NOT EXISTS rca_results (
     incident_id     UUID PRIMARY KEY REFERENCES incidents(id),
@@ -72,13 +73,14 @@ async def create_incident(
     pod: str,
     started_at: datetime,
     labels: dict[str, str] | None = None,
+    alert_payload: dict[str, Any] | None = None,
 ) -> None:
     """Insert a new incident row with status 'investigating'."""
     pool = _get_pool()
     await pool.execute(
         """
-        INSERT INTO incidents (id, alert_name, namespace, pod, status, labels, started_at)
-        VALUES ($1, $2, $3, $4, 'investigating', $5, $6)
+        INSERT INTO incidents (id, alert_name, namespace, pod, status, labels, started_at, alert_payload)
+        VALUES ($1, $2, $3, $4, 'investigating', $5, $6, $7)
         """,
         incident_id,
         alert_name,
@@ -86,7 +88,29 @@ async def create_incident(
         pod,
         json.dumps(labels or {}),
         started_at,
+        json.dumps(alert_payload) if alert_payload else None,
     )
+
+
+async def get_alert_payload(incident_id: UUID) -> dict[str, Any] | None:
+    """Return the original Alert payload for retrying an investigation."""
+    pool = _get_pool()
+    row = await pool.fetchrow("SELECT alert_payload FROM incidents WHERE id = $1", incident_id)
+    if row is None or row["alert_payload"] is None:
+        return None
+    return json.loads(row["alert_payload"])
+
+
+async def reset_incident_for_retry(incident_id: UUID) -> None:
+    """Move a finished incident back to 'investigating' so we can re-run it."""
+    pool = _get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM rca_results WHERE incident_id = $1", incident_id)
+            await conn.execute(
+                "UPDATE incidents SET status = 'investigating', error_message = NULL, steps = NULL WHERE id = $1",
+                incident_id,
+            )
 
 
 async def save_rca_result(incident_id: UUID, result: RCAResult) -> None:

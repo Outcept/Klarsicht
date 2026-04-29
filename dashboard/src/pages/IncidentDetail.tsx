@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchIncident, fetchSteps } from "../lib/api";
+import { fetchIncident, fetchSteps, retryIncident } from "../lib/api";
 import type { IncidentEntry, InvestigationStep } from "../lib/types";
 
 function formatTimestamp(iso: string): string {
@@ -12,6 +12,38 @@ function formatTimestamp(iso: string): string {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+function RetryButton({ id, onRetried }: { id: string; onRetried: () => void | Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleClick = async () => {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await retryIncident(id);
+      await onRetried();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {err && <span className="text-xs text-red-400" title={err}>Retry failed</span>}
+      <button
+        onClick={handleClick}
+        disabled={busy}
+        className="rounded border border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08] px-3 py-1 text-xs text-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {busy ? "Retrying…" : "Retry investigation"}
+      </button>
+    </div>
+  );
 }
 
 function StepEntry({ step, isLast }: { step: InvestigationStep; isLast: boolean }) {
@@ -256,9 +288,16 @@ export default function IncidentDetail() {
 
       {isFailed && (
         <div className="border border-red-500/20 bg-red-500/5 rounded-md p-6 mb-6">
-          <div className="flex items-center gap-2 text-red-400 text-sm mb-3">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-            Investigation failed
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 text-red-400 text-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              Investigation failed
+            </div>
+            <RetryButton id={id!} onRetried={async () => {
+              setSteps([]);
+              const updated = await fetchIncident(id!);
+              setData(updated);
+            }} />
           </div>
           {data.error ? (
             <pre className="text-xs font-mono text-red-300/90 whitespace-pre-wrap break-all bg-black/30 rounded px-3 py-2 border border-red-500/10">
@@ -267,6 +306,16 @@ export default function IncidentDetail() {
           ) : (
             <p className="text-xs text-[#888]">No error details captured.</p>
           )}
+        </div>
+      )}
+
+      {isCompleted && (
+        <div className="flex justify-end mb-4">
+          <RetryButton id={id!} onRetried={async () => {
+            setSteps([]);
+            const updated = await fetchIncident(id!);
+            setData(updated);
+          }} />
         </div>
       )}
 
