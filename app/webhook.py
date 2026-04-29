@@ -828,7 +828,7 @@ async def retry_incident(incident_id: str, user: AuthUser | None = Depends(get_c
         _memory_errors.pop(incident_id, None)
 
     # Authorization: same rule as viewing the incident
-    if user and not can_view_incident(user, alert.labels):
+    if user and not can_view_incident({"labels": alert.labels}, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Reset the live step stream so the dashboard sees a clean run
