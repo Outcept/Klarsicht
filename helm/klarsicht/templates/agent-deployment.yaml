@@ -68,6 +68,23 @@ spec:
             - name: KLARSICHT_LLM_MAX_TOOL_CALLS
               value: {{ .Values.agent.llmMaxToolCalls | quote }}
             {{- end }}
+            {{- /* `default ""` would swallow a literal 0; rely on the empty-string default in values.yaml instead */}}
+            {{- if ne (toString .Values.agent.llmTemperature) "" }}
+            - name: KLARSICHT_LLM_TEMPERATURE
+              value: {{ .Values.agent.llmTemperature | quote }}
+            {{- end }}
+            {{- if ne (toString .Values.agent.llmTopP) "" }}
+            - name: KLARSICHT_LLM_TOP_P
+              value: {{ .Values.agent.llmTopP | quote }}
+            {{- end }}
+            {{- if ne (toString .Values.agent.llmTopK) "" }}
+            - name: KLARSICHT_LLM_TOP_K
+              value: {{ .Values.agent.llmTopK | quote }}
+            {{- end }}
+            {{- if ne (toString .Values.agent.llmMinP) "" }}
+            - name: KLARSICHT_LLM_MIN_P
+              value: {{ .Values.agent.llmMinP | quote }}
+            {{- end }}
             - name: KLARSICHT_LLM_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -32,6 +32,17 @@ _DEFAULT_MODELS = {
 }
 
 
+def _openai_extra_body() -> dict[str, Any]:
+    """top_k and min_p aren't part of the OpenAI spec; vLLM and Ollama accept
+    them via extra_body in the request. Only include params the user set."""
+    extra: dict[str, Any] = {}
+    if settings.llm_top_k >= 0:
+        extra["top_k"] = settings.llm_top_k
+    if settings.llm_min_p >= 0:
+        extra["min_p"] = settings.llm_min_p
+    return extra
+
+
 def _build_llm() -> BaseChatModel:
     """Build the LLM client based on the configured provider."""
     provider = settings.llm_provider.lower()
@@ -39,40 +50,63 @@ def _build_llm() -> BaseChatModel:
 
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
-        return ChatAnthropic(
-            model=model,
-            api_key=settings.llm_api_key,
-            max_tokens=4096,
-            temperature=0,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "api_key": settings.llm_api_key,
+            "max_tokens": 4096,
+            "temperature": settings.llm_temperature,
+        }
+        if settings.llm_top_p >= 0:
+            kwargs["top_p"] = settings.llm_top_p
+        if settings.llm_top_k >= 0:
+            kwargs["top_k"] = settings.llm_top_k
+        # Anthropic API does not support min_p — silently dropped
+        return ChatAnthropic(**kwargs)
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI
-        kwargs = {"model": model, "temperature": 0, "max_tokens": 4096}
+        kwargs = {"model": model, "temperature": settings.llm_temperature, "max_tokens": 4096}
         if settings.llm_api_key:
             kwargs["api_key"] = settings.llm_api_key
         if settings.llm_base_url:
             kwargs["base_url"] = settings.llm_base_url
+        if settings.llm_top_p >= 0:
+            kwargs["top_p"] = settings.llm_top_p
+        extra = _openai_extra_body()
+        if extra:
+            kwargs["extra_body"] = extra
         return ChatOpenAI(**kwargs)
 
     if provider == "ollama":
         from langchain_openai import ChatOpenAI
         base_url = settings.llm_base_url or "http://ollama.default.svc:11434/v1"
-        return ChatOpenAI(
-            model=model,
-            base_url=base_url,
-            api_key="ollama",  # ollama doesn't need a real key
-            temperature=0,
-            max_tokens=4096,
-        )
+        kwargs = {
+            "model": model,
+            "base_url": base_url,
+            "api_key": "ollama",
+            "temperature": settings.llm_temperature,
+            "max_tokens": 4096,
+        }
+        if settings.llm_top_p >= 0:
+            kwargs["top_p"] = settings.llm_top_p
+        extra = _openai_extra_body()
+        if extra:
+            kwargs["extra_body"] = extra
+        return ChatOpenAI(**kwargs)
 
     if provider == "watsonx":
         from langchain_ibm import ChatWatsonx
-        kwargs: dict[str, Any] = {
+        kwargs = {
             "model_id": model,
-            "temperature": 0,
+            "temperature": settings.llm_temperature,
             "max_tokens": 4096,
         }
+        if settings.llm_top_p >= 0:
+            kwargs["top_p"] = settings.llm_top_p
+        if settings.llm_top_k >= 0:
+            kwargs["top_k"] = settings.llm_top_k
+        if settings.llm_min_p >= 0:
+            kwargs["min_p"] = settings.llm_min_p
         if settings.llm_base_url:
             kwargs["url"] = settings.llm_base_url
         if settings.llm_api_key:

@@ -52,6 +52,13 @@ agent:
   watsonxInstanceId: ""      # watsonx CP4D only
   llmProfile: auto           # auto, full, compact — compact for small models (<30B)
   llmMaxToolCalls: 0         # 0 = auto (full: 20, compact: 8)
+  # Sampling parameters. Leave at "" for top_p/top_k/min_p to use the provider default.
+  # For Qwen3 thinking mode the model card recommends temperature=0.6, top_p=0.95, top_k=20, min_p=0.
+  # For deterministic output set temperature=0 (NOT recommended in thinking mode).
+  llmTemperature: "0"        # "" or "0" = deterministic (greedy)
+  llmTopP: ""                # e.g. "0.95"
+  llmTopK: ""                # e.g. "20"
+  llmMinP: ""                # e.g. "0"
   podLabels: {}               # extra labels on agent pods only
   # Extra env vars to inject (e.g. proxy config, custom CAs)
   extraEnv: []

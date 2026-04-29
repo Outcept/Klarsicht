@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     llm_model: str = ""  # auto-detected if empty (claude-sonnet-4-20250514, gpt-4o, llama3, granite-3-8b, etc.)
     llm_api_key: str = ""
     llm_base_url: str = ""  # ollama/custom/watsonx: http://ollama:11434/v1 or internal watsonx URL
+
+    # Sampling parameters. -1 = use provider default. temperature is always passed.
+    llm_temperature: float = 0.0
+    llm_top_p: float = -1.0
+    llm_top_k: int = -1
+    llm_min_p: float = -1.0
     watsonx_project_id: str = ""  # watsonx only: IBM project ID
     watsonx_username: str = ""  # watsonx CP4D only: username (if not using IAM)
     watsonx_password: str = ""  # watsonx CP4D only: password
