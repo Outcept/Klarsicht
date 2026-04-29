@@ -28,22 +28,22 @@ You receive a fired Grafana alert and must determine the root cause using the to
 After investigation, respond with a JSON object matching this exact schema:
 
 ```json
-{{
-  "root_cause": {{
+{
+  "root_cause": {
     "summary": "One-line description of the root cause",
     "confidence": 0.94,
     "category": "misconfiguration | resource_exhaustion | dependency_failure | deployment_issue | network | unknown",
     "evidence": ["Evidence item 1", "Evidence item 2"]
-  }},
+  },
   "fix_steps": [
-    {{"order": 1, "description": "What to do", "command": "kubectl command if applicable"}}
+    {"order": 1, "description": "What to do", "command": "kubectl command if applicable"}
   ],
-  "postmortem": {{
-    "timeline": [{{"timestamp": "ISO8601", "event": "description"}}],
+  "postmortem": {
+    "timeline": [{"timestamp": "ISO8601", "event": "description"}],
     "impact": "Description of impact",
     "action_items": ["Preventive action 1"]
-  }}
-}}
+  }
+}
 ```
 
 Respond ONLY with the JSON after you have completed your investigation. Do not include markdown fences around it.
@@ -79,22 +79,22 @@ NOTE: No metrics endpoint (Mimir/Prometheus) is configured. You must rely entire
 After investigation, respond with a JSON object matching this exact schema:
 
 ```json
-{{
-  "root_cause": {{
+{
+  "root_cause": {
     "summary": "One-line description of the root cause",
     "confidence": 0.94,
     "category": "misconfiguration | resource_exhaustion | dependency_failure | deployment_issue | network | unknown",
     "evidence": ["Evidence item 1", "Evidence item 2"]
-  }},
+  },
   "fix_steps": [
-    {{"order": 1, "description": "What to do", "command": "kubectl command if applicable"}}
+    {"order": 1, "description": "What to do", "command": "kubectl command if applicable"}
   ],
-  "postmortem": {{
-    "timeline": [{{"timestamp": "ISO8601", "event": "description"}}],
+  "postmortem": {
+    "timeline": [{"timestamp": "ISO8601", "event": "description"}],
     "impact": "Description of impact",
     "action_items": ["Preventive action 1"]
-  }}
-}}
+  }
+}
 ```
 
 Respond ONLY with the JSON after you have completed your investigation. Do not include markdown fences around it.
@@ -114,12 +114,12 @@ Steps:
 5. Output JSON
 
 IMPORTANT: After investigating, respond with ONLY this JSON format:
-{{"root_cause":{{"summary":"one line cause","confidence":0.9,"category":"misconfiguration","evidence":["item1","item2"]}},"fix_steps":[{{"order":1,"description":"what to do","command":"kubectl command"}}],"postmortem":{{"timeline":[],"impact":"what broke","action_items":["prevent this"]}}}}
+{"root_cause":{"summary":"one line cause","confidence":0.9,"category":"misconfiguration","evidence":["item1","item2"]},"fix_steps":[{"order":1,"description":"what to do","command":"kubectl command"}],"postmortem":{"timeline":[],"impact":"what broke","action_items":["prevent this"]}}
 
 Categories: misconfiguration, resource_exhaustion, dependency_failure, deployment_issue, network, unknown
 
 Example — for a pod crash-looping with missing env var:
-{{"root_cause":{{"summary":"Missing DATABASE_URL environment variable","confidence":0.95,"category":"misconfiguration","evidence":["KeyError: DATABASE_URL in logs","Pod restarted 7 times"]}},"fix_steps":[{{"order":1,"description":"Add DATABASE_URL env var to deployment","command":"kubectl set env deploy/app -n production DATABASE_URL=postgresql://..."}}],"postmortem":{{"timeline":[],"impact":"Pod unavailable for 15 minutes","action_items":["Add env var validation to CI pipeline"]}}}}
+{"root_cause":{"summary":"Missing DATABASE_URL environment variable","confidence":0.95,"category":"misconfiguration","evidence":["KeyError: DATABASE_URL in logs","Pod restarted 7 times"]},"fix_steps":[{"order":1,"description":"Add DATABASE_URL env var to deployment","command":"kubectl set env deploy/app -n production DATABASE_URL=postgresql://..."}],"postmortem":{"timeline":[],"impact":"Pod unavailable for 15 minutes","action_items":["Add env var validation to CI pipeline"]}}
 
 Rules:
 - Check logs first (previous=True for crashed containers)

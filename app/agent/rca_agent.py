@@ -222,11 +222,23 @@ def _parse_agent_output(text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         pass
 
+    # Some models echo the doubled braces from older prompt examples back at us.
+    # Collapse runs of {{ → { and }} → } and retry before giving up.
+    if "{{" in text or "}}" in text:
+        try:
+            return json.loads(text.replace("{{", "{").replace("}}", "}"))
+        except json.JSONDecodeError:
+            pass
+
     # Find the first { and last } to extract embedded JSON
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
-        return json.loads(text[start:end + 1])
+        candidate = text[start:end + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            return json.loads(candidate.replace("{{", "{").replace("}}", "}"))
 
     raise json.JSONDecodeError("No JSON object found", text, 0)
 
