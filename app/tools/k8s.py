@@ -43,6 +43,25 @@ def _apps_v1() -> client.AppsV1Api:
     return client.AppsV1Api()
 
 
+def k8s_namespace_exists(namespace: str) -> bool:
+    """True if the namespace exists. False on 404, RBAC denial, or any API error
+    (we'd rather let the agent run and surface a real error than spuriously skip)."""
+    if not namespace:
+        return False
+    try:
+        _v1().read_namespace(name=namespace)
+        return True
+    except ApiException as e:
+        if e.status == 404:
+            return False
+        # 403 or transient errors — assume it exists and let the agent proceed
+        logger.warning("namespace_exists check failed: %s %s", e.status, e.reason)
+        return True
+    except Exception:
+        logger.exception("namespace_exists raised unexpectedly")
+        return True
+
+
 def k8s_get_pod(namespace: str, pod_name: str) -> dict[str, Any]:
     """Get pod status: phase, restartCount, conditions, resources, node, containerStatuses."""
     try:

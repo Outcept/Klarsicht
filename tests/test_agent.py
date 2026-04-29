@@ -100,8 +100,9 @@ def _mock_agent_stream(final_content: str):
 
 
 @pytest.mark.asyncio
+@patch("app.tools.k8s.k8s_namespace_exists", return_value=True)
 @patch("app.agent.rca_agent._build_agent")
-async def test_run_investigation(mock_build_agent):
+async def test_run_investigation(mock_build_agent, _mock_ns):
     mock_build_agent.return_value = _mock_agent_stream(json.dumps(SAMPLE_AGENT_JSON))
 
     incident_id = uuid4()
@@ -125,8 +126,9 @@ async def test_run_investigation(mock_build_agent):
 
 
 @pytest.mark.asyncio
+@patch("app.tools.k8s.k8s_namespace_exists", return_value=True)
 @patch("app.agent.rca_agent._build_agent")
-async def test_run_investigation_unparseable_output(mock_build_agent):
+async def test_run_investigation_unparseable_output(mock_build_agent, _mock_ns):
     mock_build_agent.return_value = _mock_agent_stream("I couldn't figure it out, sorry.")
 
     incident_id = uuid4()

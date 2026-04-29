@@ -197,6 +197,39 @@ def _parse_agent_output(text: str) -> dict[str, Any]:
     raise json.JSONDecodeError("No JSON object found", text, 0)
 
 
+def _build_skipped_rca(incident_id: UUID, alert: Alert, namespace: str) -> RCAResult:
+    """Synthetic RCA for alerts that target a non-existent namespace."""
+    return RCAResult(
+        incident_id=incident_id,
+        alert_name=alert.labels.get("alertname", "unknown"),
+        namespace=namespace,
+        pod=alert.labels.get("pod", "unknown"),
+        started_at=alert.startsAt,
+        investigated_at=datetime.now(timezone.utc),
+        root_cause=RootCause(
+            summary=f"Alert references namespace '{namespace}' which does not exist on this cluster.",
+            confidence=1.0,
+            category="stale_alert",
+            evidence=[
+                f"kubectl get ns {namespace} → not found",
+                "No pods, deployments or events to inspect — investigation skipped.",
+            ],
+        ),
+        fix_steps=[
+            FixStep(order=1, description="Check the alert source — the workload may have been deleted, the alert may target the wrong cluster, or this may be a test alert."),
+            FixStep(order=2, description=f"If the alert is intentional, create the namespace: kubectl create namespace {namespace}", command=f"kubectl create namespace {namespace}"),
+        ],
+        postmortem=Postmortem(
+            timeline=[],
+            impact="None — alert target does not exist.",
+            action_items=[
+                "Update the Grafana alert query/labels to point at a real workload, OR",
+                "Silence the alert if it's a leftover from a deleted workload.",
+            ],
+        ),
+    )
+
+
 def _build_rca_result(
     incident_id: UUID,
     alert: Alert,
@@ -249,7 +282,22 @@ async def run_investigation(incident_id: UUID, alert: Alert) -> RCAResult:
     progress = get_progress(str(incident_id))
     logger.info("Starting investigation for incident %s", incident_id)
 
-    progress.add_step("Alert received", f"{alert.labels.get('alertname', '?')} in {alert.labels.get('namespace', '?')}/{alert.labels.get('pod', '?')}")
+    ns = alert.labels.get("namespace", "")
+    progress.add_step("Alert received", f"{alert.labels.get('alertname', '?')} in {ns or '?'}/{alert.labels.get('pod', '?')}")
+
+    # Short-circuit: if the alert targets a namespace that doesn't exist, skip
+    # the LLM call entirely — otherwise the agent runs k8s tools that all 404
+    # and the model hallucinates an RCA from empty data.
+    if ns and not settings.is_backend:
+        from app.tools.k8s import k8s_namespace_exists
+        if not k8s_namespace_exists(ns):
+            progress.add_step(
+                "Namespace not found",
+                f"Namespace '{ns}' does not exist on this cluster — likely a stale or test alert.",
+                status="done",
+            )
+            progress.complete("completed")
+            return _build_skipped_rca(incident_id, alert, ns)
 
     agent = _build_agent()
     message = _build_investigation_message(alert)
