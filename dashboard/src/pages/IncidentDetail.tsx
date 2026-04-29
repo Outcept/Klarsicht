@@ -412,9 +412,40 @@ export default function IncidentDetail() {
               )}
             </section>
           )}
+
+          {/* Execution trace — what the agent saw from each tool call */}
+          {isCompleted && <ExecutionTrace steps={steps} />}
         </div>
       )}
     </Page>
+  );
+}
+
+function ExecutionTrace({ steps }: { steps: InvestigationStep[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="border border-white/[0.08] rounded-md p-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full text-left"
+      >
+        <SectionTitle>Execution trace</SectionTitle>
+        <span className="text-xs text-[#888] hover:text-white">
+          {open ? "Hide" : `Show (${steps.length} step${steps.length === 1 ? "" : "s"})`}
+        </span>
+      </button>
+      {open && (
+        steps.length > 0 ? (
+          <div className="relative pl-4 border-l border-white/[0.08] space-y-3 mt-4">
+            {steps.map((step, i) => (
+              <StepEntry key={i} step={step} isLast={i === steps.length - 1} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-[#888] mt-4">No trace available — incident is older than the in-memory window or pre-dates persistence.</p>
+        )
+      )}
+    </section>
   );
 }
 

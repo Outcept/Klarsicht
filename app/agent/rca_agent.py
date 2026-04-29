@@ -268,11 +268,12 @@ async def run_investigation(incident_id: UUID, alert: Alert) -> RCAResult:
         # Each event is a dict with node name -> state update
         for node_name, state_update in event.items():
             if node_name == "tools":
-                # Tool execution completed
+                # Tool execution completed — capture full output (capped) so the
+                # dashboard execution-trace shows what the agent actually saw.
                 msgs = state_update.get("messages", [])
                 for msg in msgs:
                     tool_name = getattr(msg, "name", "")
-                    content = str(getattr(msg, "content", ""))[:100]
+                    content = str(getattr(msg, "content", ""))[:8000]
                     if tool_name:
                         progress.add_step(f"{tool_name} completed", content, tool=tool_name, status="done")
 
@@ -284,7 +285,10 @@ async def run_investigation(incident_id: UUID, alert: Alert) -> RCAResult:
                     for tc in tool_calls:
                         tool_name = tc.get("name", "unknown")
                         args = tc.get("args", {})
-                        input_summary = ", ".join(f"{k}={v}" for k, v in args.items())[:150] if isinstance(args, dict) else ""
+                        try:
+                            input_summary = json.dumps(args, default=str)[:2000] if isinstance(args, dict) else str(args)[:2000]
+                        except Exception:
+                            input_summary = str(args)[:2000]
                         progress.add_step(f"Calling {tool_name}", input_summary, tool=tool_name)
 
                     # If no tool calls, this is the final response

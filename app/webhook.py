@@ -129,6 +129,16 @@ async def _run_and_store(incident_id: UUID, alert: Alert) -> None:
         else:
             _memory_errors[str(incident_id)] = error_message
 
+    # Persist the execution trace so it's still visible after the in-memory
+    # progress is cleaned up (or the pod restarts).
+    if _use_db:
+        try:
+            from app.db import save_incident_steps
+            from app.steps import get_progress
+            await save_incident_steps(incident_id, get_progress(str(incident_id)).to_dict()["steps"])
+        except Exception:
+            logger.exception("Failed to persist execution trace for incident %s", incident_id)
+
 
 @app.get("/auth/config")
 async def auth_config():
@@ -766,10 +776,23 @@ async def get_incident_endpoint(incident_id: str, user: AuthUser | None = Depend
 
 @app.get("/incidents/{incident_id}/steps")
 async def get_incident_steps(incident_id: str):
-    """Get the live investigation steps for an incident."""
-    from app.steps import get_progress
-    progress = get_progress(incident_id)
-    return progress.to_dict()
+    """Return the live (in-memory) trace, or fall back to the persisted one for finished incidents."""
+    from app.steps import get_progress, _progress as _live_progress
+    if incident_id in _live_progress:
+        return _live_progress[incident_id].to_dict()
+
+    if _use_db:
+        try:
+            from app.db import get_incident_steps as db_get_steps
+            steps = await db_get_steps(UUID(incident_id))
+            if steps is not None:
+                # Status reflects the incident's terminal state — UI doesn't poll for these
+                return {"status": "completed", "steps": steps}
+        except (ValueError, Exception):
+            pass
+
+    # Fall back to creating an empty progress object (matches old behaviour)
+    return get_progress(incident_id).to_dict()
 
 
 @app.get("/incidents/{incident_id}/stream")

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS incidents (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS steps JSONB;
 
 CREATE TABLE IF NOT EXISTS rca_results (
     incident_id     UUID PRIMARY KEY REFERENCES incidents(id),
@@ -118,6 +119,25 @@ async def mark_incident_failed(incident_id: UUID, error_message: str | None = No
         incident_id,
         error_message,
     )
+
+
+async def save_incident_steps(incident_id: UUID, steps: list[dict[str, Any]]) -> None:
+    """Persist the agent's execution trace so it survives the in-memory cleanup."""
+    pool = _get_pool()
+    await pool.execute(
+        "UPDATE incidents SET steps = $2 WHERE id = $1",
+        incident_id,
+        json.dumps(steps),
+    )
+
+
+async def get_incident_steps(incident_id: UUID) -> list[dict[str, Any]] | None:
+    """Read the persisted execution trace for an incident."""
+    pool = _get_pool()
+    row = await pool.fetchrow("SELECT steps FROM incidents WHERE id = $1", incident_id)
+    if row is None or row["steps"] is None:
+        return None
+    return json.loads(row["steps"])
 
 
 def _row_to_incident(row: asyncpg.Record) -> dict[str, Any]:
