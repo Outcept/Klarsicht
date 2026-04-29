@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     join_token: str = ""  # shared secret — agent uses it to register with backend
     backend_url: str = ""  # agent mode: URL of the central backend (e.g. http://backend:8000)
 
+    # TLS for outbound HTTPS calls. False = skip cert verification (use a custom CA via
+    # REQUESTS_CA_BUNDLE/SSL_CERT_FILE instead when possible).
+    tls_verify: bool = True
+
     model_config = {"env_prefix": "KLARSICHT_"}
 
     @property

@@ -201,3 +201,19 @@ Watch namespaces as comma-separated string.
 {{- define "klarsicht.watchNamespaces" -}}
 {{- join "," .Values.agent.watchNamespaces }}
 {{- end }}
+
+{{/*
+Whether the agent has any custom CA bundle source configured.
+*/}}
+{{- define "klarsicht.agent.tls.hasCaBundle" -}}
+{{- if or .Values.agent.tls.caBundle .Values.agent.tls.caBundleSecret.name .Values.agent.tls.caBundleConfigMap.name -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Path inside the container where the custom CA bundle is mounted.
+*/}}
+{{- define "klarsicht.agent.tls.caBundlePath" -}}
+/etc/ssl/klarsicht/ca.crt
+{{- end }}

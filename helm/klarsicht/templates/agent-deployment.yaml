@@ -212,6 +212,16 @@ spec:
             - name: KLARSICHT_BACKEND_URL
               value: {{ .Values.agent.backendUrl | quote }}
             {{- end }}
+            {{- if .Values.agent.tls.insecure }}
+            - name: KLARSICHT_TLS_VERIFY
+              value: "false"
+            {{- end }}
+            {{- if include "klarsicht.agent.tls.hasCaBundle" . }}
+            - name: REQUESTS_CA_BUNDLE
+              value: {{ include "klarsicht.agent.tls.caBundlePath" . | quote }}
+            - name: SSL_CERT_FILE
+              value: {{ include "klarsicht.agent.tls.caBundlePath" . | quote }}
+            {{- end }}
             {{- with .Values.agent.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -228,19 +238,51 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
-          {{- if .Values.emptyDirVolumes.enabled }}
+          {{- if or .Values.emptyDirVolumes.enabled (include "klarsicht.agent.tls.hasCaBundle" .) }}
           volumeMounts:
+            {{- if .Values.emptyDirVolumes.enabled }}
             - name: tmp
               mountPath: /tmp
             - name: home
               mountPath: /home/klarsicht
+            {{- end }}
+            {{- if include "klarsicht.agent.tls.hasCaBundle" . }}
+            - name: ca-bundle
+              mountPath: {{ include "klarsicht.agent.tls.caBundlePath" . | quote }}
+              subPath: ca.crt
+              readOnly: true
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.agent.resources | nindent 12 }}
-      {{- if .Values.emptyDirVolumes.enabled }}
+      {{- if or .Values.emptyDirVolumes.enabled (include "klarsicht.agent.tls.hasCaBundle" .) }}
       volumes:
+        {{- if .Values.emptyDirVolumes.enabled }}
         - name: tmp
           emptyDir: {}
         - name: home
           emptyDir: {}
+        {{- end }}
+        {{- if include "klarsicht.agent.tls.hasCaBundle" . }}
+        - name: ca-bundle
+          {{- if .Values.agent.tls.caBundleConfigMap.name }}
+          configMap:
+            name: {{ .Values.agent.tls.caBundleConfigMap.name | quote }}
+            items:
+              - key: {{ .Values.agent.tls.caBundleConfigMap.key | default "ca.crt" | quote }}
+                path: ca.crt
+          {{- else if .Values.agent.tls.caBundleSecret.name }}
+          secret:
+            secretName: {{ .Values.agent.tls.caBundleSecret.name | quote }}
+            items:
+              - key: {{ .Values.agent.tls.caBundleSecret.key | default "ca.crt" | quote }}
+                path: ca.crt
+          {{- else }}
+          secret:
+            secretName: {{ include "klarsicht.fullname" . }}-agent-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+          {{- end }}
+        {{- end }}
       {{- end }}

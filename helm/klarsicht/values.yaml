@@ -59,6 +59,17 @@ agent:
   #    value: ".internal.inventx.ch,.svc,.cluster.local,10.0.0.0/8"
   #  - name: HTTPS_PROXY
   #    value: "http://proxy.inventx.ch:8080"
+  # TLS for outbound HTTPS calls (LLM API, Mimir, GitLab, Confluence, webhooks, ...)
+  tls:
+    insecure: false           # true = skip cert verification (NOT recommended for production)
+    caBundle: ""              # inline PEM to trust (one or more concatenated certs); creates a secret automatically
+    # Or reference an existing Secret/ConfigMap holding the CA bundle:
+    caBundleSecret:
+      name: ""                # existing Secret name; takes precedence over caBundle when set
+      key: "ca.crt"
+    caBundleConfigMap:
+      name: ""                # existing ConfigMap name; takes precedence over caBundle when set
+      key: "ca.crt"
   peerWebhookUrls: ""        # comma-separated peer URLs for alert fan-out + comparison
   # Multi-cluster
   mode: standalone            # standalone, backend, agent

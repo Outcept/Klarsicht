@@ -18,6 +18,9 @@ from app.auth import AuthUser, can_view_incident, filter_incidents, get_current_
 from app.config import settings
 from app.models.alert import Alert, GrafanaWebhookPayload
 from app.models.rca import RCAResult
+from app.tls import apply_tls_settings
+
+apply_tls_settings()
 
 logger = logging.getLogger(__name__)
 
